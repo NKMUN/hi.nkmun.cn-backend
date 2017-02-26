@@ -1,0 +1,34 @@
+{
+  "name": "hi.nkmun.cn-backend",
+  "version": "0.1.0",
+  "description": "Second generation NKMUN registration system backend",
+  "main": "server.js",
+  "scripts": {
+    "server": "bin/hi-nkmun"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NKMUN/hi.nkmun.cn-backend.git"
+  },
+  "author": "wacky6",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/NKMUN/hi.nkmun.cn-backend/issues"
+  },
+  "homepage": "https://github.com/NKMUN/hi.nkmun.cn-backend#readme",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "jsonwebtoken": "^7.1.9",
+    "koa": "^2.0.1",
+    "koa-accesslog": "0.0.2",
+    "koa-body": "^2.0.0",
+    "koa-mongo-sanitize": "github:wacky6/koa-mongo-sanitize",
+    "koa-router": "^7.1.0",
+    "mongodb": "^2.2.22",
+    "mz": "^2.4.0",
+    "nodemailer": "^2.6.0",
+    "password-prompt": "^1.0.2",
+    "shortid": "^2.2.6",
+    "winston": "^2.2.0"
+  }
+}

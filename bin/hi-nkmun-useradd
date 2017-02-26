@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+
+const program = require('commander')
+
+program
+  .version('0.1.0')
+  .usage('--user <user> [options]')
+  .option('-u, --user <user>', 'User name', String)
+  .option('-d, --db, <connStr>',  'Database, default: mongodb://localhost:27017/nkmun', String)
+  .option('-a, --admin', 'Admin access')
+  .option('-x, --root',  'Root access')
+  .option('-s, --school <schoolId>', 'School access', String)
+  .option('-p, --password', 'Prompt for password')
+  .option('-r, --reserved',   'Set as reserved user')
+  .option('-R, --unreserved', 'Unset as reserved user')
+  .parse(process.argv)
+
+process.on('SIGINT', () => process.exit(127) )
+
+let {
+    db = 'mongodb://localhost:27017/nkmun',
+    user: userId = '' ,
+    admin = false,
+    root = false,
+    school = false,
+    password = false,
+    reserved = false,
+    unreserved = false,
+} = program
+
+if (!userId) {
+  console.error('Error: Expects exactly one user! Check "--help" for usage')
+  process.exit(1)
+}
+
+;(async () => {
+    let nkmun = await require('mongodb').MongoClient.connect( db )
+    let user = { _id: userId }
+
+    // access
+    let access = []
+    if (admin)
+        access.push('admin')
+    if (root)
+        access.push('root')
+    if (school)
+        access.push('school')
+    if (access.length > 0) {
+        user.access = access
+        user.school = school ? school : null
+    }
+
+    // reserved flag
+    if (reserved)
+      user.reserved = true
+    if (unreserved)
+      user.reserved = false
+
+    // password
+    if (password) {
+        try{
+          let password = await require('password-prompt')('Password: ')
+          user = Object.assign( user, require('../lib/password').derive(password) )
+        } catch(e) {
+          process.exit(1)
+        }
+    }
+
+    let {
+      result: { ok }
+    } = await nkmun.collection('user').updateOne(
+        { _id: userId },
+        {
+          $set: user,
+          $currentDate: { lastModified: true }
+        },
+        { upsert: true }
+    )
+
+    if (ok) {
+      console.log('Update: ')
+      console.log(user)
+    }else{
+      console.log('Error: ')
+      console.log(result)
+    }
+
+    await nkmun.close()
+})()

@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+
+const program = require('commander')
+
+program
+  .version('0.1.0')
+  .option('-p, --port <port>', 'Port to bind, default: 8001', parseInt)
+  .option('-h, --host <addr>', 'Host address to bind, default: all', String)
+  .option('--db, <connStr>',   'Database, default: mongodb://localhost:27017/nkmun', String)
+  .option('-s, --secret <secret>', 'Secret used to sign/verify JWT', String)
+  .parse(process.argv)
+
+// server startup params
+let {
+    port = 8001,
+    host = undefined,
+    db = 'mongodb://localhost:27017/nkmun',
+    secret = 'secret'
+} = program
+
+require('../server').create({ host, port, db, secret })
