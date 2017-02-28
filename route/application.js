@@ -35,6 +35,7 @@ route.post('/applications/',
             await ctx.db.collection('application').insert(
                 Object.assign(
                     payload,
+                    { _id: payload.school.name },
                     { created: new Date() }
                 )
             )

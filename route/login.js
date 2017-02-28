@@ -3,7 +3,7 @@ const route = new Router()
 
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
-const { sign, verify, decode } = require('jsonwebtoken')
+const { sign } = require('jsonwebtoken')
 
 const AUTHORIZATION_PREFIX = 'Bearer '
 const Password = require('../lib/password')
@@ -30,6 +30,8 @@ route.post('/login',
             school: storedCred.school || null
         }
 
+        // surpass payload that contains password
+        ctx.log.payload = { user }
         ctx.log.user = user
         ctx.log.issuedToken = cred
         ctx.status = 200

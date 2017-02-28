@@ -5,6 +5,7 @@ const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const ShortId = require('shortid')
 const { Mailer } = require('./mailer')
+const { sign } = require('jsonwebtoken')
 
 route.post('/invitations/',
     AccessFilter('admin'),
@@ -22,7 +23,8 @@ route.post('/invitations/',
         await ctx.db.collection('invitation').insert({
             school,
             invitation: invitationCode,
-            invited: new Date()
+            invited: new Date(),
+            used: false
         })
 
         let {nickname, account, invitation} = ctx.mailConfig
@@ -63,6 +65,40 @@ route.post('/invitations/',
 
     }
 )
+
+route.get('/invitations/:code', async ctx => {
+    const { code } = ctx.params
+    let invitation = await ctx.db.collection('invitation').findOne({
+        invitation: code,
+        $or: [
+            { used: { $exists: false } },
+            { used: false }
+        ]
+    })
+
+    if ( ! invitation ) {
+        ctx.status = 410
+        ctx.body = { error: 'no such invitation' }
+        return
+    }
+
+    let {
+        school,
+        _id
+    } = await ctx.db.collection('application').findOne(
+        { _id: invitation.school },
+        { 'school.name': 1, 'school.englishName': 1, _id: 1 }
+    )
+
+    ctx.status = 200
+    ctx.body = {
+        school: {
+            name: school.name,
+            englishName: school.englishName
+        },
+        token: sign({ school: _id }, ctx.JWT_SECRET, { expiresIn: '1 hour' })
+    }
+})
 
 module.exports = {
     routes: route.routes()

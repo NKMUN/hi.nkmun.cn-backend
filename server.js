@@ -13,6 +13,7 @@ const Initialize = require('./route/initialize')
 const Session = require('./route/session')
 const Application = require('./route/application')
 const Invitation = require('./route/invitation')
+const Registration = require('./route/registration')
 
 module.exports = {
     async create({
@@ -45,6 +46,7 @@ module.exports = {
         app.use( Session.routes )
         app.use( Application.routes )
         app.use( Invitation.routes )
+        app.use( Registration.routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {
