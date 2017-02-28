@@ -3,9 +3,12 @@ const route = new Router()
 const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { Config } = require('./config')
+const { toId } = require('../lib/id-transform')
+const { LogOp } = require('../lib/logger')
 
 route.post('/applications/',
     Config,
+    LogOp('application', 'submit'),
     async ctx => {
         let payload = getPayload(ctx)
 
@@ -21,20 +24,23 @@ route.post('/applications/',
             return
         }
 
-        let application = Object.assign(
-            payload,
-            { _id: payload.school.name }
-        )
+        ctx.log.application = payload
 
-        try{
-            await ctx.db.collection('application').insertOne( application )
-            ctx.status = 200
-            ctx.body = { message: 'accepted' }
-        } catch(e) {
+        let exists = await ctx.db.collection('application').findOne({ "school.name": payload.school.name })
+
+        if ( exists ) {
             ctx.status = 409
             ctx.body = { error: 'already exists' }
+        } else {
+            await ctx.db.collection('application').insert(
+                Object.assign(
+                    payload,
+                    { created: new Date() }
+                )
+            )
+            ctx.status = 200
+            ctx.body = { message: 'accepted' }
         }
-
     }
 )
 
@@ -58,11 +64,8 @@ route.get('/applications/:id',
     async ctx => {
         let result = await ctx.db.collection('application').findOne({ _id: ctx.params.id })
         if (result) {
-            // rename _id -> id
-            result.id = result._id
-            delete result._id
             ctx.status = 200
-            ctx.body = result
+            ctx.body = toId(result)
         }else{
             ctx.status = 404
             ctx.body = { error: 'not found' }
@@ -72,12 +75,14 @@ route.get('/applications/:id',
 
 route.patch('/applications/:id',
     AccessFilter('admin'),
+    LogOp('application', 'seat-alloc'),
     async ctx => {
         let {
             modifiedCount
         } = await ctx.db.collection('application').updateOne(
             { _id: ctx.params.id },
-            { $set: getPayload(ctx) }
+            { $set: getPayload(ctx),
+              $currentDate: { lastModified: { $type: 'date' } } }
         )
         if (modifiedCount) {
             ctx.status = 200

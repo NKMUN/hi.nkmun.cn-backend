@@ -5,11 +5,14 @@ const KoaBody = require('koa-body')
 const Logger = require('./lib/logger')
 const AccessLog = require('koa-accesslog')
 
+const {createLogger} = require('./lib/logger')
+
 const Login = require('./route/login')
 const Config = require('./route/config')
 const Initialize = require('./route/initialize')
 const Session = require('./route/session')
 const Application = require('./route/application')
+const Invitation = require('./route/invitation')
 
 module.exports = {
     async create({
@@ -34,11 +37,14 @@ module.exports = {
         app.use( KoaBody({multipart: true}) )
         app.use( MongoSanitize() )
 
+        app.use( createLogger() )
+
         app.use( Config.routes )
         app.use( Login.routes )
         app.use( Initialize.routes )
         app.use( Session.routes )
         app.use( Application.routes )
+        app.use( Invitation.routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {

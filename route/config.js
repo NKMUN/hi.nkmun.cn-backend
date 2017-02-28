@@ -2,6 +2,7 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const { Sessions } = require('./session')
+const { LogOp } = require('../lib/logger')
 const getPayload = require('./lib/get-payload')
 
 async function Config(ctx, next) {
@@ -13,7 +14,7 @@ async function Config(ctx, next) {
 function ReturnConfig(id) {
     return async function ReturnConfig(ctx) {
         ctx.status = 200
-        ctx.body = await ctx.db.collection('meta').findOne({ _id: id }, { _id: 0 })
+        ctx.body = (await ctx.db.collection('meta').findOne({ _id: id }, { _id: 0 })) || {}
     }
 }
 
@@ -36,14 +37,14 @@ route.get('/config',
 
 route.get('/config/config',      ReturnConfig('config') )
 route.get('/config/application', ReturnConfig('application') )
-route.get('/config/invitation',  AccessFilter('root'), ReturnConfig('invitation') )
+route.get('/config/mail',        AccessFilter('root'), ReturnConfig('mail') )
 
 route.put('/config/:id',
     AccessFilter('root'),
+    LogOp('config', 'write'),
     async ctx => {
-        let payload = getPayload(ctx)
         await ctx.db.collection('meta').update(
-            { _id: ctx.params.id }, { $set: payload }
+            { _id: ctx.params.id }, { $set: getPayload(ctx) }
         )
         ctx.status = 200
         ctx.body = payload
