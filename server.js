@@ -7,14 +7,6 @@ const AccessLog = require('koa-accesslog')
 
 const {createLogger} = require('./lib/logger')
 
-const Login = require('./route/login')
-const Config = require('./route/config')
-const Initialize = require('./route/initialize')
-const Session = require('./route/session')
-const Application = require('./route/application')
-const Invitation = require('./route/invitation')
-const Registration = require('./route/registration')
-
 module.exports = {
     async create({
         port = 8081,
@@ -40,13 +32,13 @@ module.exports = {
 
         app.use( createLogger() )
 
-        app.use( Config.routes )
-        app.use( Login.routes )
-        app.use( Initialize.routes )
-        app.use( Session.routes )
-        app.use( Application.routes )
-        app.use( Invitation.routes )
-        app.use( Registration.routes )
+        app.use( require('./route/login').routes )
+        app.use( require('./route/config').routes )
+        app.use( require('./route/initialize').routes )
+        app.use( require('./route/session').routes )
+        app.use( require('./route/application').routes )
+        app.use( require('./route/invitation').routes )
+        app.use( require('./route/registration').routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {
