@@ -3,7 +3,7 @@ const route = new Router()
 const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { Config } = require('./config')
-const { toId } = require('../lib/id-transform')
+const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 
 route.post('/applications/',
@@ -35,8 +35,7 @@ route.post('/applications/',
             await ctx.db.collection('application').insert(
                 Object.assign(
                     payload,
-                    { _id: payload.school.name },
-                    { created: new Date() }
+                    { _id: newId(), created: new Date() }
                 )
             )
             ctx.status = 200

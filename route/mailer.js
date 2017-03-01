@@ -6,7 +6,7 @@ module.exports = {
 
         if ( ! mailConfig ) {
             ctx.status = 412
-            ctx.body = { error: 'invitation config not set' }
+            ctx.body = { error: 'mail config not set' }
         } else {
             // initialize mailer
             let {

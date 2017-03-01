@@ -43,8 +43,9 @@ route.put('/config/:id',
     AccessFilter('root'),
     LogOp('config', 'write'),
     async ctx => {
+        let payload = getPayload(ctx)
         await ctx.db.collection('meta').update(
-            { _id: ctx.params.id }, { $set: getPayload(ctx) }
+            { _id: ctx.params.id }, { $set: payload }, { upsert: true }
         )
         ctx.status = 200
         ctx.body = payload

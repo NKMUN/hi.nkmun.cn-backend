@@ -2,7 +2,7 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
-const { toId, fromId } = require('../lib/id-transform')
+const { toId, fromId } = require('../lib/id-util')
 
 async function Sessions(ctx, next) {
     ctx.sessions = await ctx.db.collection('session').find({ }).toArray()

@@ -1,9 +1,11 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
+const { LogOp } = require('../lib/logger')
 
 route.post('/initialize',
     AccessFilter('root'),
+    LogOp('init', 'initialize'),
     async ctx => {
         const { db } = ctx
 
@@ -26,9 +28,12 @@ route.post('/initialize',
         })
 
         await db.collection('meta').insertOne({
-            _id: 'invitation',
-            template: '<p>Email template. {school}</p>',
-            port: 465
+            _id: 'mail',
+            host: 'smtpdm.aliyun.com',
+            port: 465,
+            nickname: '汇文国际中学生模拟联合国大会组委会',
+            invitation: '<p>Email template. {school}</p>',
+
         })
 
         await db.collection('meta').insertOne({

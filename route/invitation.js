@@ -6,6 +6,7 @@ const { LogOp } = require('../lib/logger')
 const ShortId = require('shortid')
 const { Mailer } = require('./mailer')
 const { sign } = require('jsonwebtoken')
+const { newId } = require('../id-util')
 
 route.post('/invitations/',
     AccessFilter('admin'),
@@ -21,6 +22,7 @@ route.post('/invitations/',
         ctx.log.invitation = invitationCode
 
         await ctx.db.collection('invitation').insert({
+            _id: newId(),
             school,
             invitation: invitationCode,
             invited: new Date(),
