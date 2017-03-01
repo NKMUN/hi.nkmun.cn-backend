@@ -29,7 +29,8 @@ route.get('/config',
                 id:   '$_id',
                 type: '$type',
                 name: '$name',
-                dual: { $ifNull: ['$dual', false] }
+                dual: { $ifNull: ['$dual', false] },
+                reserved: { $ifNull: ['$reserved', false] }
             } }
         ]).toArray()
     }

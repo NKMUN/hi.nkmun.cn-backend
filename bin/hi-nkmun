@@ -19,3 +19,8 @@ let {
 } = program
 
 require('../server').create({ host, port, db, secret })
+.catch( e => {
+    console.error(e.message)
+    console.error(e.stack)
+    process.exit(-1)
+})
