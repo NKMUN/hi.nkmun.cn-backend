@@ -6,7 +6,7 @@ const { LogOp } = require('../lib/logger')
 const ShortId = require('shortid')
 const { Mailer } = require('./mailer')
 const { sign } = require('jsonwebtoken')
-const { newId } = require('../id-util')
+const { newId } = require('../lib/id-util')
 
 route.post('/invitations/',
     AccessFilter('admin'),

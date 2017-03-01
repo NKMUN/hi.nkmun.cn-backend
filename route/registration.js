@@ -35,10 +35,11 @@ route.post('/registration',
         )
 
         let {
+            school,
             seat
         } = await db.collection('application').findOne(
             { _id: schoolId },
-            { seat: 1 }
+            { seat: 1, school: 1 }
         )
 
         try {
@@ -50,6 +51,7 @@ route.post('/registration',
             )
             await db.collection('school').insert({
                 _id: schoolId,
+                school: school,
                 leader: leader,
                 stage: '1.relinquishment',
                 seat: {
@@ -62,7 +64,7 @@ route.post('/registration',
                 { school: schoolId },
                 { $set: { used: new Date() } }
             )
-            
+
             // surpass payload that contains password
             ctx.log.payload = {
                 leader,
