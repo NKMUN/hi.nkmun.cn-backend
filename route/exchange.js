@@ -82,7 +82,8 @@ route.post('/exchanges/',
         let {
             target,
             targetSession,
-            selfSession
+            selfSession,
+            note
         } = ctx.request.body
 
         if ( !target || !targetSession || !selfSession ) {
@@ -134,6 +135,7 @@ route.post('/exchanges/',
                 name: to.school.name,
                 session: targetSession
             },
+            note,
             state: false
         }
 
@@ -226,6 +228,9 @@ route.post('/exchanges/:id',
                 { _id },
                 { $set: { state: 'accepted' } }
             )
+
+            // TODO: Check for unavailable exchange requests
+            // check if requests to from/to's from/to session can be satisfied
 
             let {
                 seat: currentSeat
