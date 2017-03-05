@@ -22,7 +22,7 @@ route.get('/config',
     Config,
     async ctx => {
         ctx.status = 200
-        ctx.body = ctx.config
+        ctx.body = ctx.config || {}
         ctx.body.sessions = await ctx.db.collection('session').aggregate([
             { $project: {
                 _id:   0,
