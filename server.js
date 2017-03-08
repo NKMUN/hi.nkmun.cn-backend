@@ -41,6 +41,7 @@ module.exports = {
         app.use( require('./route/registration').routes )
         app.use( require('./route/school').routes )
         app.use( require('./route/exchange').routes )
+        app.use( require('./route/hotel').routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {
