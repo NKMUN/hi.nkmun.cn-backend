@@ -34,7 +34,7 @@ async function TokenParser(ctx, next) {
 function createAccessFilter(...access) {
     return async function AccessFilter(ctx, next) {
         if ( !ctx.token && !await TokenParser(ctx) )
-            return
+            return false
 
         // flatten access Array -> access Object
         let accessArr = (ctx.token && ctx.token.access) || []
@@ -45,14 +45,35 @@ function createAccessFilter(...access) {
         if ( ! access.some( $ => ctx.access[$] ) ) {
             ctx.status = 403
             ctx.body = { message : 'Forbidden' }
+            return false
         } else {
-            await next()
+            if (next)
+                await next()
+            return true
         }
     }
 }
 
+// check school is operating on its resrouce
+// field is route params key
+function createSchoolChecker(field) {
+    return async function SchoolChecker(ctx, next) {
+        if ( !ctx.access && !await AccessFilter('school') )
+            return false
+        if (ctx.token !== ctx[field]) {
+            ctx.status = 403
+            ctx.body = { message: 'Forbidden' }
+            return false
+        } else {
+            if (next)
+                await next()
+            return true
+        }
+    }
+}
 
 module.exports = {
     TokenParser,
-    AccessFilter: createAccessFilter
+    AccessFilter: createAccessFilter,
+    SchoolChecker: createSchoolChecker
 }
