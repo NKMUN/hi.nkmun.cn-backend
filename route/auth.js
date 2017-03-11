@@ -54,26 +54,7 @@ function createAccessFilter(...access) {
     }
 }
 
-// check school is operating on its resrouce
-// field is route params key
-function createSchoolChecker(field) {
-    return async function SchoolChecker(ctx, next) {
-        if ( !ctx.access && !await AccessFilter('school') )
-            return false
-        if (ctx.token !== ctx[field]) {
-            ctx.status = 403
-            ctx.body = { message: 'Forbidden' }
-            return false
-        } else {
-            if (next)
-                await next()
-            return true
-        }
-    }
-}
-
 module.exports = {
     TokenParser,
-    AccessFilter: createAccessFilter,
-    SchoolChecker: createSchoolChecker
+    AccessFilter: createAccessFilter
 }

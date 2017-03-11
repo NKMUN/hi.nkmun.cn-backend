@@ -168,5 +168,6 @@ route.post('/schools/:id/seat',
 )
 
 module.exports = {
-    routes: route.routes()
+    routes: route.routes(),
+    IsSelfOrAdmin
 }
