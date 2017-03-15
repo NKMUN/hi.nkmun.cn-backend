@@ -7,6 +7,7 @@ const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 const { filterExchange } = require('./exchange')
+const escapeForRegexp = require('escape-string-regexp')
 
 async function IsSelfOrAdmin(ctx, next) {
     if ( ! ctx.token )
@@ -28,7 +29,8 @@ async function School(ctx, next) {
         ctx.status = 404
         ctx.body = { error: 'not found' }
     } else {
-        await next()
+        if (next)
+            await next()
     }
 }
 
@@ -77,6 +79,51 @@ route.get('/schools/:id/seat',
     async ctx => {
         ctx.status = 200
         ctx.body = ctx.school.seat
+    }
+)
+
+route.patch('/schools/:id',
+    AccessFilter('admin'),
+    School,
+    LogOp('school', 'patch'),
+    async ctx => {
+        const field = ctx.query.field
+        if (   !field
+            || field[0]==='$'
+            || field==='stage'
+            || field==='created'
+            || field==='id'
+            || field==='_id'
+        ) {
+            ctx.status = 400
+            ctx.body = { error: 'bad request' }
+            return
+        }
+
+        if ( field.startsWith('seat.') ) {
+            const round = field.slice( 'seat.'.length )
+            const stageRegexp = '^' + escapeForRegexp(`${round}.`)
+            let {
+                matchedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.params.id, stage: { $regex: stageRegexp } },
+                { $set: { [field]: ctx.request.body } }
+            )
+            if (matchedCount === 0) {
+                ctx.status = 412
+                ctx.body = { error: 'invalid stage' }
+                return
+            }
+        } else {
+            await ctx.db.collection('school').updateOne(
+                { _id: ctx.params.id },
+                { $set: { [field]: ctx.request.body } }
+            )
+        }
+
+        await School(ctx)
+        ctx.status = 200
+        ctx.body = ctx.school
     }
 )
 

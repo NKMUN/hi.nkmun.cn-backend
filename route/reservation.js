@@ -64,7 +64,9 @@ route.post('/schools/:id/reservations/',
                     hotel: $.hotel,
                     school: ctx.params.id,
                     checkIn: $.checkIn,
-                    checkOut: $.checkOut
+                    checkOut: $.checkOut,
+                    round: $.round || '1',
+                    created: new Date()
                 }))
             )
             await ctx.db.collection('school').updateOne(
@@ -95,17 +97,14 @@ route.get('/schools/:id/reservations/',
                 foreignField: '_id',
                 as: 'school'
             } },
-            { $project: {
-                checkIn: '$checkIn',
-                checkOut: '$checkOut',
-                school: { $arrayElemAt: [ "$school", 0 ] },
-                hotel: { $arrayElemAt: [ "$hotel", 0 ] }
-            } },
+            { $unwind: '$hotel' },
+            { $unwind: '$school' },
             { $project: {
                 _id: false,
                 id: '$_id',
                 checkIn: '$checkIn',
                 checkOut: '$checkOut',
+                round: { $ifNull: ['$round', '1'] },
                 hotel: {
                     id: '$hotel._id',
                     name: '$hotel.name',
@@ -118,6 +117,61 @@ route.get('/schools/:id/reservations/',
                 }
             } }
         ]).toArray()
+    }
+)
+
+route.get('/schools/:id/reservations/:rid',
+    IsSelfOrAdmin,
+    async ctx => {
+        let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid, school: ctx.params.id })
+        if (reservation) {
+            let hotel = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
+            let school = await ctx.db.collection('school').findOne({ _id: reservation.school })
+
+            ctx.status = 200
+            ctx.body = {
+                id: reservation._id,
+                checkIn: reservation.checkIn,
+                checkOut: reservation.checkOut,
+                round: reservation.round || '1',
+                hotel: {
+                    id: hotel._id,
+                    name: hotel.name,
+                    type: hotel.type,
+                    price: hotel.price
+                },
+                school: {
+                    id: school._id,
+                    name: school.school.name
+                }
+            }
+        } else {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+        }
+    }
+)
+
+route.delete('/schools/:id/reservations/:rid',
+    IsSelfOrAdmin,
+    LogOp('reservation', 'delete'),
+    async ctx => {
+        let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
+
+        if (!reservation) {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+            return
+        }
+
+        await ctx.db.collection('reservation').deleteOne({ _id: ctx.params.rid })
+        await ctx.db.collection('hotel').updateOne(
+            { _id: reservation.hotel },
+            { $inc: { available: 1 } }
+        )
+
+        ctx.status = 200
+        ctx.body = { message: 'deleted' }
     }
 )
 
