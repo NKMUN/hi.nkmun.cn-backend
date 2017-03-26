@@ -136,6 +136,7 @@ route.post('/schools/:id/seat',
         const {
             confirmRelinquish,
             confirmExchange,
+            confirmPayment,
             leaderAttend,
             session,
             round,
@@ -216,5 +217,6 @@ route.post('/schools/:id/seat',
 
 module.exports = {
     routes: route.routes(),
-    IsSelfOrAdmin
+    IsSelfOrAdmin,
+    School
 }
