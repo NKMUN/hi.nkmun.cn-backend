@@ -1,6 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
-const { IsSelfOrAdmin } = require('./school')
+const { IsSelfOrAdmin, School } = require('./school')
 const { Sessions } = require('./session')
 
 function differenceOfDays(a, b) {
@@ -44,14 +44,16 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
 
     // sessions
     for (let key in seat) {
-        let session = sessions.find( $ => $._id === key )
-        if (session)
-            detail.push({
-                name: session.name,
-                type: '会场',
-                price: session.price,
-                amount: seat[key],
-            })
+        if (seat[key]) {
+            let session = sessions.find( $ => $._id === key )
+            if (session)
+                detail.push({
+                    name: session.name,
+                    type: '会场',
+                    price: session.price,
+                    amount: seat[key],
+                })
+        }
     }
 
     // reservations
@@ -72,9 +74,10 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
 
 route.get('/schools/:id/billing',
     IsSelfOrAdmin,
+    School,
     async ctx => {
         ctx.status = 200
-        ctx.body = await getBillingDetail(ctx, ctx.params.id, ctx.query.round || '1')
+        ctx.body = await getBillingDetail(ctx, ctx.params.id, ctx.school.stage[0])
     }
 )
 

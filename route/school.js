@@ -101,12 +101,18 @@ route.patch('/schools/:id',
         }
 
         if ( field.startsWith('seat.') ) {
-            const round = field.slice( 'seat.'.length )
-            const stageRegexp = '^' + escapeForRegexp(`${round}.`)
+            let stage = ctx.school.stage
+            if ( field[5] === stage[0]    // modifies current round
+                 && (stage.endsWith('.paid') || stage.endsWith('.complete'))
+            ) {
+                ctx.status = 412
+                ctx.body = { error: 'incorrect stage to make modify seats' }
+                return
+            }
             let {
                 matchedCount
             } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id, stage: { $regex: stageRegexp } },
+                { _id: ctx.params.id },
                 { $set: { [field]: ctx.request.body } }
             )
             if (matchedCount === 0) {
@@ -137,6 +143,7 @@ route.post('/schools/:id/seat',
             confirmRelinquish,
             confirmExchange,
             confirmPayment,
+            allocSecondRound,
             leaderAttend,
             session,
             round,
@@ -202,12 +209,27 @@ route.post('/schools/:id/seat',
             processed = matchedCount === 1
         }
 
+        // allocSecondRound
+        if (allocSecondRound) {
+            // only admin can allocate second round seats
+            if ( ! await AccessFilter('admin')(ctx) )
+                return
+            let {
+                matchedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.params.id, stage: '1.complete' },
+                { $set: { stage: '2.reservation' } }
+            )
+            processed = matchedCount === 1
+            // TODO: maybe send second round email?
+        }
+
         if (processed) {
             ctx.status = 200
-            ctx.body = await ctx.db.collection('school').findOne(
+            ctx.body = (await ctx.db.collection('school').findOne(
                 { _id: ctx.params.id },
                 { _id: 0, seat: 1 }
-            )
+            )).seat
         } else {
             ctx.status = 400
             ctx.body = { error: 'bad request' }
@@ -218,5 +240,5 @@ route.post('/schools/:id/seat',
 module.exports = {
     routes: route.routes(),
     IsSelfOrAdmin,
-    School
+    School,
 }

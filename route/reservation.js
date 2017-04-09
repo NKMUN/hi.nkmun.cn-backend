@@ -1,7 +1,7 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const { IsSelfOrAdmin } = require('./school')
+const { IsSelfOrAdmin, School } = require('./school')
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { toId, newId } = require('../lib/id-util')
@@ -9,7 +9,17 @@ const { toId, newId } = require('../lib/id-util')
 route.post('/schools/:id/reservations/',
     IsSelfOrAdmin,
     LogOp('reservation', 'reserve'),
+    School,
     async ctx => {
+        if (    ctx.school.stage.endsWith('.paid')
+             || ctx.school.stage.endsWith('.complete')
+             || Number(ctx.school.stage[0]) >= 3
+        ) {
+            ctx.status = 412
+            ctx.body = { error: 'incorrect stage to make reservations' }
+            return
+        }
+
         let reservations = getPayload(ctx)
 
         // verify checkIn/Out
@@ -65,13 +75,13 @@ route.post('/schools/:id/reservations/',
                     school: ctx.params.id,
                     checkIn: $.checkIn,
                     checkOut: $.checkOut,
-                    round: $.round || '1',
+                    round: ctx.school.stage[0],
                     created: new Date()
                 }))
             )
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.params.id },
-                { $set: { stage: '1.payment' } }
+                { $set: { stage: `${ctx.school.stage[0]}.payment` } }
             )
             ctx.status = 200
             ctx.body = { inserted: insertedIds }
