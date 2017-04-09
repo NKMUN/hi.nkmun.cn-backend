@@ -93,7 +93,8 @@ route.patch('/schools/:id/payments/',
                 id: newId(),
                 school: ctx.params.id,
                 created: new Date(),
-                items: await getBillingDetail(ctx, ctx.params.id, ctx.school.stage[0])
+                paid_by: ctx.school,
+                items: await getBillingDetail(ctx, ctx.params.id, ctx.school.stage[0]),
              })
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.params.id },

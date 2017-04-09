@@ -237,6 +237,37 @@ route.post('/schools/:id/seat',
     }
 )
 
+route.delete('/schools/:id',
+    AccessFilter('admin'),
+    School,
+    async ctx => {
+        let id = ctx.params.id
+        await ctx.db.collection('school').updateOne(
+            { _id: { $eq: id } },
+            { $set: { stage: 'x.nuking' } }
+        )
+
+        // NOTE: payment, billing information are not removed
+        await ctx.db.collection('exchange').deleteMany({ 'from.school': { $eq: id } })
+        await ctx.db.collection('exchange').deleteMany({ 'to.school': { $eq: id } })
+        await ctx.db.collection('invitation').deleteMany({ school: { $eq: id } })
+        // TODO: remove registered representatives after information collection is implemented
+
+        // restore reservations
+        let reservations = await ctx.db.collection('reservation').find({ school: { $eq: id } }).toArray()
+        await ctx.db.collection('reservation').deleteMany({ school: { $eq: id } })
+        await Promise.all( reservations.map( $ => ctx.db.collection('hotel').updateOne(
+            { _id: $.hotel },
+            { $inc: { available: 1 } }
+        ) ) )
+
+        await ctx.db.collection('school').deleteOne({ _id: { $eq: id } })
+
+        ctx.status = 200
+        ctx.body = { message: 'nuked' }
+    }
+)
+
 module.exports = {
     routes: route.routes(),
     IsSelfOrAdmin,

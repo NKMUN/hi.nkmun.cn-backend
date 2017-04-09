@@ -94,6 +94,23 @@ route.patch('/applications/:id',
     }
 )
 
+route.delete('/applications/:id',
+    AccessFilter('admin'),
+    LogOp('application', 'nuke'),
+    async ctx => {
+        let {
+            deletedCount
+        } = await ctx.db.collection('application').deleteOne({ _id: { $eq: id } })
+        if (deletedCount) {
+            ctx.status = 200
+            ctx.body = { message: 'nuked' }
+        } else {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+        }
+    }
+)
+
 module.exports = {
     routes: route.routes()
 }
