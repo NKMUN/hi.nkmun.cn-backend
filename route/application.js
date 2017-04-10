@@ -100,7 +100,7 @@ route.delete('/applications/:id',
     async ctx => {
         let {
             deletedCount
-        } = await ctx.db.collection('application').deleteOne({ _id: { $eq: id } })
+        } = await ctx.db.collection('application').deleteOne({ _id: { $eq: ctx.params.id } })
         if (deletedCount) {
             ctx.status = 200
             ctx.body = { message: 'nuked' }

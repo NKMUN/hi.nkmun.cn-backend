@@ -43,8 +43,17 @@ route.post('/initialize',
         })
 
         await db.collection('session').insertOne({
-            _id:  '_leader',
-            name: '参会领队',
+            _id:  '_leader_nr',
+            name: '非代表领队',
+            type: null,
+            dual: false,
+            reserved: true,
+            price: 0
+        })
+
+        await db.collection('session').insertOne({
+            _id:  '_leader_r',
+            name: '代表兼任领队',
             type: null,
             dual: false,
             reserved: true,

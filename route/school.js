@@ -112,7 +112,7 @@ route.patch('/schools/:id',
             let {
                 matchedCount
             } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id },
+                { _id: ctx.school._id },
                 { $set: { [field]: ctx.request.body } }
             )
             if (matchedCount === 0) {
@@ -122,7 +122,7 @@ route.patch('/schools/:id',
             }
         } else {
             await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id },
+                { _id: ctx.school._id },
                 { $set: { [field]: ctx.request.body } }
             )
         }
@@ -154,7 +154,7 @@ route.post('/schools/:id/seat',
 
         // seat relinquish
         if (session && round && amount) {
-            let filter = { _id: ctx.params.id }
+            let filter = { _id: ctx.school._id }
             let field = `seat.${round}.${session}`
 
             if (amount < 0)
@@ -178,13 +178,18 @@ route.post('/schools/:id/seat',
 
         // leaderAttend
         if (leaderAttend !== undefined) {
-            let {
-                matchedCount
-            } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id },
-                { $set: { 'seat.1._leader': leaderAttend ? 0 : 1 } }
-            )
-            processed = matchedCount === 1
+            if (leaderAttend) {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id },
+                    { $set: { 'seat.1._leader_r': leaderAttend ? 0 : 1 } }
+                )
+            } else {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id },
+                    { $set: { 'seat.1._leader_nr': leaderAttend ? 0 : 1 } }
+                )
+            }
+            processed = true
         }
 
         // confirmRelinquish
@@ -192,7 +197,7 @@ route.post('/schools/:id/seat',
             let {
                 matchedCount
             } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id, stage: '1.relinquishment' },
+                { _id: ctx.school._id, stage: '1.relinquishment' },
                 { $set: { stage: '1.exchange' } }
             )
             processed = matchedCount === 1
@@ -200,13 +205,34 @@ route.post('/schools/:id/seat',
 
         // confirmExchange
         if (confirmExchange) {
-            let {
-                matchedCount
-            } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id, stage: '1.exchange' },
+            if (ctx.school.stage !== '1.exchange') {
+                ctx.status = 412
+                ctx.body = { error: 'bad stage to confirm exchange' }
+            }
+            // revoke all pending requests
+            await ctx.db.collection('exchange').updateMany(
+                { 'from.school': ctx.school._id, state: false },
+                { $set: { state: 'gone' } }
+            )
+            await ctx.db.collection('exchange').updateMany(
+                { 'to.school': ctx.school._id, state: false },
+                { $set: { state: 'gone' } }
+            )
+            // verify dual representative seats
+            await School(ctx)    // refresh ctx.school, ensures we have latest seat information
+            let seat = ctx.school.seat['1']
+            let dualSessionHasDualSeats = ctx.sessions.filter( $ => $.dual )
+                                                      .every( $ => (ctx.school.seat['1'][$._id] || 0) % 2 === 0 )
+            if ( ! dualSessionHasDualSeats) {
+                ctx.status = 410
+                ctx.body = { error: 'dual session must have dual seats' }
+                return
+            }
+            await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id },
                 { $set: { stage: '1.reservation' } }
             )
-            processed = matchedCount === 1
+            processed = true
         }
 
         // allocSecondRound
@@ -217,7 +243,7 @@ route.post('/schools/:id/seat',
             let {
                 matchedCount
             } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id, stage: '1.complete' },
+                { _id: ctx.school._id, stage: '1.complete' },
                 { $set: { stage: '2.reservation' } }
             )
             processed = matchedCount === 1
@@ -227,7 +253,7 @@ route.post('/schools/:id/seat',
         if (processed) {
             ctx.status = 200
             ctx.body = (await ctx.db.collection('school').findOne(
-                { _id: ctx.params.id },
+                { _id: ctx.school._id },
                 { _id: 0, seat: 1 }
             )).seat
         } else {
@@ -241,7 +267,7 @@ route.delete('/schools/:id',
     AccessFilter('admin'),
     School,
     async ctx => {
-        let id = ctx.params.id
+        let id = ctx.school._id
         await ctx.db.collection('school').updateOne(
             { _id: { $eq: id } },
             { $set: { stage: 'x.nuking' } }
