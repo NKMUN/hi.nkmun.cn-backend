@@ -1,0 +1,97 @@
+#!/usr/bin/env node
+
+const program = require('commander')
+
+program
+  .version('0.1.0')
+  .option('--db <connStr>',         'Database, default: mongodb://localhost:27017/nkmun', String)
+  .option('--mail <mail>',          'Email address to send warnings to', String)
+  .option('-r, --resolution <res>', 'Time resolution, default: 3600 (1h)', Number)
+  .parse(process.argv)
+
+let {
+    db = 'mongodb://localhost:27017/nkmun',
+    mail,
+    resolution = 3600
+} = program
+
+const { MongoClient, ISODate } = require('mongodb')
+
+;(async (dbStr) => {
+    const db = await MongoClient.connect( dbStr )
+    let cursorLog = await db.collection('introspection').aggregate([
+        { $sort: { time: 1 } }
+    ])
+    let prevTimeId, lastTime, responseTime = [], aggregated
+    while ( true ) {
+        let doc = await cursorLog.next()
+        let timeId = Math.floor(new Date(doc && doc.time).getTime() / (1000 * resolution))
+        if (timeId !== prevTimeId || doc === null) {
+            // figure out response time distribution
+            responseTime.sort( (a,b) => a-b )
+            if (responseTime.length) {
+                let len = responseTime.length
+                aggregated.response_time = {
+                    '50': responseTime[ Math.floor(len * 0.50) ],
+                    '90': responseTime[ Math.floor(len * 0.90) ],
+                    '95': responseTime[ Math.floor(len * 0.95) ],
+                    '99': responseTime[ Math.floor(len * 0.99) ],
+                    '100': responseTime[ len - 1 ]
+                }
+            }
+            if (aggregated) {
+                console.log(aggregated)
+                await db.collection('monitor').updateOne(
+                  { _id: aggregated._id },
+                  { $set: aggregated },
+                  { upsert: true }
+                )
+            }
+            aggregated = {
+                _id: timeId,
+                status: {},
+                http_requests: 0,
+                successful: 0,
+                client_error: 0,
+                server_error: 0
+            }
+            responseTime = []
+        }
+
+        if (doc === null)
+          break
+
+        prevTimeId = timeId
+        responseTime.push(doc.response_time)
+
+        if (!aggregated.status[doc.status])
+            aggregated.status[doc.status] = 1
+        else
+            aggregated.status[doc.status] += 1
+
+        aggregated.http_requests += 1
+
+        if (200 <= doc.status && doc.status < 400)
+            aggregated.successful += 1
+        if (400 <= doc.status && doc.status < 500)
+            aggregated.client_error += 1
+        if (500 <= doc.status && doc.status < 600)
+            aggregated.server_error += 1
+
+        // record errored requests
+        if (400 <= doc.status && doc.status < 600 )
+            await db.collection('erroredRequests').update(
+                { _id: doc._id },
+                { $set: doc },
+                { upsert: true }
+            )
+    }
+
+    if (lastTime) {
+
+    }
+
+    db.close()
+})(db).catch( e => {
+    process.stderr.write(e.stack+'\n')
+})
