@@ -15,6 +15,7 @@ module.exports = {
         secret = require('crypto').randomBytes(32).toString('base64')
     }) {
         const app = new Koa()
+        app.proxy = true
 
         app.context.JWT_SECRET = secret,
         app.context.db = await require('mongodb').MongoClient.connect( db )
