@@ -221,9 +221,14 @@ route.post('/schools/:id/seat',
             // verify dual representative seats
             await School(ctx)    // refresh ctx.school, ensures we have latest seat information
             let seat = ctx.school.seat['1']
-            let dualSessionHasDualSeats = ctx.sessions.filter( $ => $.dual )
-                                                      .every( $ => (ctx.school.seat['1'][$._id] || 0) % 2 === 0 )
-            if ( ! dualSessionHasDualSeats) {
+            // NOTE: admin can bypass dual session requirement
+            let dualSessionHasDualSeats = (
+                  ctx.token.access.indexOf('admin') !== -1
+                ? true
+                : ctx.sessions.filter( $ => $.dual )
+                              .every( $ => (ctx.school.seat['1'][$._id] || 0) % 2 === 0 )
+            )
+            if ( ! dualSessionHasDualSeats ) {
                 ctx.status = 410
                 ctx.body = { error: 'dual session must have dual seats' }
                 return
