@@ -76,8 +76,9 @@ route.get('/schools/:id/billing',
     IsSelfOrAdmin,
     School,
     async ctx => {
+        const round = ctx.query.round || ctx.school.stage[0] || '1'
         ctx.status = 200
-        ctx.body = await getBillingDetail(ctx, ctx.params.id, ctx.school.stage[0])
+        ctx.body = await getBillingDetail(ctx, ctx.params.id, round)
     }
 )
 
