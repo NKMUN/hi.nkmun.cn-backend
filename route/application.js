@@ -47,14 +47,17 @@ route.post('/applications/',
 route.get('/applications/',
     AccessFilter('admin'),
     async ctx => {
+        let projection = {
+            _id: 0,
+            id: '$_id',
+            name: '$school.name',
+            processed: { $ifNull: ['$processed', false] }
+        }
+        if (ctx.query.seat)
+            projection.seat = '$seat'
         ctx.status = 200
         ctx.body = await ctx.db.collection('application').aggregate([
-            { $project: {
-                _id: 0,
-                id: '$_id',
-                name: '$school.name',
-                processed: { $ifNull: ['$processed', false] }
-            } }
+            { $project: projection }
         ]).toArray()
     }
 )
