@@ -63,6 +63,9 @@ route.get('/applications/:id',
     AccessFilter('admin'),
     async ctx => {
         let result = await ctx.db.collection('application').findOne({ _id: ctx.params.id })
+        let registered = await ctx.db.collection('school').findOne({ 'school.name': result.school.name })
+        if (registered)
+            result.registered = true
         if (result) {
             ctx.status = 200
             ctx.body = toId(result)
@@ -101,6 +104,7 @@ route.delete('/applications/:id',
         let {
             deletedCount
         } = await ctx.db.collection('application').deleteOne({ _id: { $eq: ctx.params.id } })
+        await ctx.db.collection('invitation').deleteMany({ school: ctx.params.id })
         if (deletedCount) {
             ctx.status = 200
             ctx.body = { message: 'nuked' }
