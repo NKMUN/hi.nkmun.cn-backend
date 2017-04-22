@@ -49,6 +49,17 @@ async function Exchange(ctx, next) {
     }
 }
 
+async function removeUnavailable(ctx, school, session) {
+    await ctx.db.collection('exchange').updateMany(
+        { state: false, 'from.schoool': school, 'from.session': session },
+        { $set: { state: 'unavailable' } }
+    )
+    await ctx.db.collection('exchange').updateMany(
+        { state: false, 'to.schoool': school, 'to.session': session },
+        { $set: { state: 'unavailable' } }
+    )
+}
+
 route.get('/exchanges/',
     AccessFilter( 'school', 'admin' ),
     async ctx => {
@@ -171,6 +182,10 @@ route.post('/exchanges/:id',
         if ( ctx.exchange.state ) {
             ctx.status = 410
             ctx.body = { error: 'gone' }
+            await ctx.db.collection('exchange').updateOne(
+                { _id },
+                { $set: { state: 'unavailable' } }
+            )
             return
         }
 
@@ -229,8 +244,13 @@ route.post('/exchanges/:id',
                 { $set: { state: 'accepted' } }
             )
 
-            // TODO: Check for unavailable exchange requests
             // check if requests to from/to's from/to session can be satisfied
+            // from, to are fetched before performing exchange
+            // test seat availability using 1
+            if (from.seat['1'][fromSession] === 1)
+                await removeUnavailable(ctx, fromSchool, fromSession)
+            if (to.seat['1'][toSession] === 1)
+                await removeUnavailable(ctx, toSchool, toSession)
 
             let {
                 seat: currentSeat
