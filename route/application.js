@@ -66,10 +66,8 @@ route.get('/applications/:id',
     AccessFilter('admin'),
     async ctx => {
         let result = await ctx.db.collection('application').findOne({ _id: ctx.params.id })
-        let registered = await ctx.db.collection('school').findOne({ 'school.name': result.school.name })
-        if (registered)
-            result.registered = true
         if (result) {
+            result.registered = Boolean(await ctx.db.collection('school').findOne({ 'school.name': result.school.name }))
             ctx.status = 200
             ctx.body = toId(result)
         }else{
