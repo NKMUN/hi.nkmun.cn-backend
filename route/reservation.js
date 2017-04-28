@@ -22,6 +22,12 @@ route.post('/schools/:id/reservations/',
 
         let reservations = getPayload(ctx)
 
+        if ( ! reservations.length ) {
+            ctx.status = 400
+            ctx.body = { error: 'bad request' }
+            return
+        }
+
         // verify checkIn/Out
         let valid = (
             await Promise.all(
