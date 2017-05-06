@@ -145,6 +145,8 @@ route.post('/schools/:id/seat',
             confirmPayment,
             allocSecondRound,
             leaderAttend,
+            startConfirm,
+            confirmAttend,
             session,
             round,
             amount = 0,
@@ -178,15 +180,22 @@ route.post('/schools/:id/seat',
 
         // leaderAttend
         if (leaderAttend !== undefined) {
+            if (Number(ctx.school.stage) >= 3) {
+                ctx.status = 400
+                ctx.body = { error: 'invalid stage' }
+                return
+            }
             if (leaderAttend) {
                 await ctx.db.collection('school').updateOne(
                     { _id: ctx.school._id },
-                    { $set: { 'seat.1._leader_r': leaderAttend ? 0 : 1 } }
+                    { $set: { 'seat.1._leader_r': 1 },
+                      $unset: { 'seat.1._leader_nr': '' } }
                 )
             } else {
                 await ctx.db.collection('school').updateOne(
                     { _id: ctx.school._id },
-                    { $set: { 'seat.1._leader_nr': leaderAttend ? 0 : 1 } }
+                    { $set: { 'seat.1._leader_nr': 1 },
+                      $unset: { 'seat.1._leader_r': '' } }
                 )
             }
             processed = true
@@ -255,6 +264,59 @@ route.post('/schools/:id/seat',
             // TODO: maybe send second round email?
         }
 
+        // startConfirm
+        if (startConfirm) {
+            if ( ! await AccessFilter('admin')(ctx) )
+                return
+            let {
+                matchedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id, stage: { $in: ['1.complete', '2.complete'] } },
+                { $set: { stage: '3.confirm' } }
+            )
+            if (matchedCount !== 1) {
+                ctx.status = 404
+                ctx.body = { error: 'not found' }
+                return
+            }
+            // insert representatives
+            let leaderAttend = ctx.school.seat['1']['_leader_r'] >= 1 || !ctx.school.seat['1']['_leader_nr']
+            for (let round in ctx.school.seat)
+                for (let session in ctx.school.seat[round])
+                    for (let i=0; i!==ctx.school.seat[round][session]; ++i) {
+                        if (session !== '_leader_r') {
+                            // is_leader: representative is leader
+                            // if !leaderAttend (leader is not representative) -> infer leader from _leader_nr session
+                            // if leaderAttend -> ask user to select leader
+                            ctx.db.collection('representative').insertOne({
+                                _id: newId(),
+                                school: ctx.school._id,
+                                session,
+                                round,
+                                created: new Date(),
+                                is_leader: leaderAttend ? false : (session==='_leader_nr' ? true: null),
+                                withdraw: false,
+                            })
+                        }
+                    }
+            processed = true
+        }
+
+        if (confirmAttend) {
+            let {
+                matchedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id, stage: '3.confirm' },
+                { $set: { stage: '9.complete' } }
+            )
+            if (matchedCount !== 1) {
+                ctx.status = 412
+                ctx.body = { error: 'invalid stage to confirm attendance' }
+                return
+            }
+            processed = true
+        }
+
         if (processed) {
             ctx.status = 200
             ctx.body = (await ctx.db.collection('school').findOne(
@@ -282,7 +344,7 @@ route.delete('/schools/:id',
         await ctx.db.collection('exchange').deleteMany({ 'from.school': { $eq: id } })
         await ctx.db.collection('exchange').deleteMany({ 'to.school': { $eq: id } })
         await ctx.db.collection('invitation').deleteMany({ school: { $eq: id } })
-        // TODO: remove registered representatives after information collection is implemented
+        await ctx.db.collection('representative').deleteMany({ school: { $eq: id } })
 
         // restore reservations
         let reservations = await ctx.db.collection('reservation').find({ school: { $eq: id } }).toArray()
