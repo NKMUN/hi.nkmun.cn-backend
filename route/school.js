@@ -333,6 +333,7 @@ route.post('/schools/:id/seat',
 route.delete('/schools/:id',
     AccessFilter('admin'),
     School,
+    LogOp('school', 'nuke'),
     async ctx => {
         let id = ctx.school._id
         await ctx.db.collection('school').updateOne(

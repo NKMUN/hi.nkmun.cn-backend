@@ -68,6 +68,7 @@ route.get('/users/',
 
 route.patch('/users/:id',
     AccessFilter('admin', 'root'),
+    LogOp('user', 'patch'),
     async ctx => {
         const {
             password
