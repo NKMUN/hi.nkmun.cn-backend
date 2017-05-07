@@ -33,7 +33,7 @@ module.exports = {
 
         app.use( createLogger() )
 
-        app.use( require('./route/login').routes )
+        app.use( require('./route/user').routes )
         app.use( require('./route/config').routes )
         app.use( require('./route/initialize').routes )
         app.use( require('./route/session').routes )
