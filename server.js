@@ -47,6 +47,7 @@ module.exports = {
         app.use( require('./route/billing').routes )
         app.use( require('./route/payment').routes )
         app.use( require('./route/representative').routes )
+        app.use( require('./route/export').routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {
