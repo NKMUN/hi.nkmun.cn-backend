@@ -11,9 +11,11 @@ route.post('/schools/:id/reservations/',
     LogOp('reservation', 'reserve'),
     School,
     async ctx => {
-        if (    ctx.school.stage.endsWith('.paid')
-             || ctx.school.stage.endsWith('.complete')
-             || Number(ctx.school.stage[0]) >= 3
+        if ( ctx.token.access.indexOf('admin') === -1
+             && ( ctx.school.stage.endsWith('.paid')
+               || ctx.school.stage.endsWith('.complete')
+               || Number(ctx.school.stage[0]) >= 3
+             )
         ) {
             ctx.status = 412
             ctx.body = { error: 'incorrect stage to make reservations' }
