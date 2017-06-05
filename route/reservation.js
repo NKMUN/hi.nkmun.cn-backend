@@ -87,10 +87,15 @@ route.post('/schools/:id/reservations/',
                     created: new Date()
                 }))
             )
-            await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id },
-                { $set: { stage: `${ctx.school.stage[0]}.payment` } }
-            )
+            if ( ctx.token.access.indexOf('school') !== -1
+                 && Number(ctx.school.stage[0]) >= 1
+                 && Number(ctx.school.stage[0]) <= 2
+            ) {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.params.id },
+                    { $set: { stage: `${ctx.school.stage[0]}.payment` } }
+                )
+            }
             ctx.status = 200
             ctx.body = { inserted: insertedIds }
         }
