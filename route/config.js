@@ -30,7 +30,8 @@ route.get('/config',
                 type: '$type',
                 name: '$name',
                 dual: { $ifNull: ['$dual', false] },
-                reserved: { $ifNull: ['$reserved', false] }
+                reserved: { $ifNull: ['$reserved', false] },
+                requiresChairman: { $ifNull: ['$requiresChairman', false] },
             } }
         ]).toArray()
     }
