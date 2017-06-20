@@ -2,6 +2,9 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const CsvStringify = require('csv-stringify')
+const Archiver = require('archiver')
+const { PassThrough } = require('stream')
+const { verify, sign } = require('jsonwebtoken')
 
 const GV = (obj, key) => {
     let keys = key.split('.')
@@ -68,7 +71,8 @@ const REPRESENTATIVE = {
         '监护人姓名',
         '监护人手机',
         '监护人证件类型',
-        '监护人证件号码'
+        '监护人证件号码',
+        '备注',
     ],
     map: $ => [
        isLeaderText( GV($, 'is_leader') ),
@@ -87,6 +91,7 @@ const REPRESENTATIVE = {
        GV($, 'guardian.phone'),
        idTypeText( GV($, 'guardian_identification.type') ),
        GV($, 'guardian_identification.number'),
+       GV($, 'comment')
     ]
 }
 
@@ -119,6 +124,43 @@ const RESERVATION = {
     ]
 }
 
+const COMMITTEE = {
+    columns: [
+        '职能',
+        '学校',
+        '姓名',
+        '性别',
+        '手机',
+        '邮箱',
+        'QQ',
+        '证件类型',
+        '证件号码',
+        '紧急联系人关系',
+        '紧急联系人姓名',
+        '紧急联系人手机',
+        '紧急联系人证件类型',
+        '紧急联系人证件号码',
+        '备注'
+    ],
+    map: $ => [
+       GV($, 'role'),
+       GV($, 'school'),
+       GV($, 'contact.name'),
+       genderText( GV($, 'contact.gender') ),
+       GV($, 'contact.phone'),
+       GV($, 'contact.email'),
+       GV($, 'contact.qq'),
+       idTypeText( GV($, 'identification.type') ),
+       GV($, 'identification.number'),
+       guardianTypeText( GV($, 'guardian.type') ),
+       GV($, 'guardian.name'),
+       GV($, 'guardian.phone'),
+       idTypeText( GV($, 'guardian_identification.type') ),
+       GV($, 'guardian_identification.number'),
+       GV($, 'comment')
+    ]
+}
+
 const createCsvStream = (cursor, columns, map) => {
     const stream = new CsvStringify()
     stream.write(columns)
@@ -130,7 +172,6 @@ const createCsvStream = (cursor, columns, map) => {
     })
     return stream
 }
-
 
 const LOOKUP_REPRESENTATIVE = [
     { $lookup: {
@@ -164,6 +205,10 @@ const LOOKUP_RESERVATION = [
     } },
     { $unwind: '$hotel' },
     { $unwind: '$school' }
+]
+
+const LOOKUP_COMMITTEE = [
+    { $sort: { role: -1, name: -1 } }
 ]
 
 route.get('/export/representatives',
@@ -220,6 +265,71 @@ route.get('/export/reservations',
             RESERVATION.columns,
             RESERVATION.map
         )
+    }
+)
+
+route.get('/export/committees',
+    AccessFilter('admin', 'root'),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE),
+            COMMITTEE.columns,
+            COMMITTEE.map
+        )
+    }
+)
+
+const NameCreator = () => {
+    let map = {}
+    return (name) => {
+        if (map[name]) {
+            map[name] += 1
+        } else {
+            map[name] = 1
+        }
+        if (map[name] > 1)
+            return name + '-' + map[name]
+        else
+            return name
+    }
+}
+
+route.get('/export/committees/photos',
+    async ctx => {
+        if (!ctx.query.token && await AccessFilter('admin', 'root')(ctx)){
+            ctx.status = 201
+            ctx.set('location', '?token='+sign(
+                { 'export': 1 },
+                ctx.JWT_SECRET,
+                { expiresIn: '1 min' }
+            ))
+            ctx.body = ''
+        } else {
+            // verify token
+            try {
+                verify(ctx.query.token, ctx.JWT_SECRET)
+            } catch(e) {
+                ctx.status = 403
+                ctx.body = { error: 'not authorized' }
+                return
+            }
+            ctx.status = 200
+            ctx.set('content-type', 'application/zip;charset=utf-8')
+            let archiver = Archiver('zip', {store: true})
+            ctx.body = archiver.pipe(new PassThrough())
+            const committees = await ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE).toArray()
+            const createName = NameCreator()
+            for (let committee of committees) {
+                const prefix = GV(committee, 'role') + '-' + GV(committee, 'contact.name')
+                const name = createName(prefix) + '.jpg'
+                const photo = await ctx.db.collection('image').findOne({ _id: committee.photoId })
+                if (photo)
+                    archiver.append(photo.buffer.buffer, { name, date: photo.created })
+            }
+            archiver.finalize()
+        }
     }
 )
 

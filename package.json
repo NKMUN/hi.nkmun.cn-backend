@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/NKMUN/hi.nkmun.cn-backend#readme",
   "dependencies": {
+    "archiver": "^1.3.0",
     "commander": "^2.9.0",
     "csv-stringify": "^1.0.4",
     "escape-string-regexp": "^1.0.5",
