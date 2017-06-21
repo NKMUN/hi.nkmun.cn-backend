@@ -140,6 +140,10 @@ const COMMITTEE = {
         '紧急联系人手机',
         '紧急联系人证件类型',
         '紧急联系人证件号码',
+        '来宁日期',
+        '离宁日期',
+        '酒店入住日期',
+        '酒店退房日期',
         '备注'
     ],
     map: $ => [
@@ -157,6 +161,10 @@ const COMMITTEE = {
        GV($, 'guardian.phone'),
        idTypeText( GV($, 'guardian_identification.type') ),
        GV($, 'guardian_identification.number'),
+       GV($, 'arriveDate'),
+       GV($, 'departDate'),
+       GV($, 'checkInDate'),
+       GV($, 'checkOutDate'),
        GV($, 'comment')
     ]
 }
