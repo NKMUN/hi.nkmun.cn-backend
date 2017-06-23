@@ -15,7 +15,7 @@ route.post('/images/',
         }
 
         let { path, type, size } = ctx.request.body.files.file
-        if ( size > 2*1024*1024 ) {
+        if ( size > 20*1024*1024 ) {
             ctx.status = 400
             ctx.body = { error: 'too large' }
             return
