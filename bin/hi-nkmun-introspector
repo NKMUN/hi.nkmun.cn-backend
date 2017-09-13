@@ -7,12 +7,15 @@ program
   .option('--db <connStr>',         'Database, default: mongodb://localhost:27017/nkmun', String)
   .option('--mail <mail>',          'Email address to send warnings to', String)
   .option('-r, --resolution <res>', 'Time resolution, default: 3600 (1h)', Number)
+  .option('-c, --clear',            'Clear aggregated introspection entries')
   .parse(process.argv)
 
 let {
     db = 'mongodb://localhost:27017/nkmun',
     mail,
-    resolution = 3600
+    resolution = 3600,
+    clear = false,
+    maxOffender = 10,    // maxinum number of offending requests reported in email
 } = program
 
 const { MongoClient, ISODate } = require('mongodb')
@@ -20,9 +23,11 @@ const { MongoClient, ISODate } = require('mongodb')
 ;(async (dbStr) => {
     const db = await MongoClient.connect( dbStr )
     let cursorLog = await db.collection('introspection').aggregate([
+        { $match: { processed: { $exists: false } } },
         { $sort: { time: 1 } }
     ])
-    let prevTimeId, lastTime, responseTime = [], aggregated
+    let startTimeId, prevTimeId, lastTime, responseTime = [], aggregated
+    let offendingRequests = [], results = []
     while ( true ) {
         let doc = await cursorLog.next()
         let timeId = Math.floor(new Date(doc && doc.time).getTime() / (1000 * resolution))
@@ -62,6 +67,8 @@ const { MongoClient, ISODate } = require('mongodb')
           break
 
         prevTimeId = timeId
+        startTimeId = startTimeId || timeId
+        lastTime = doc.time
         responseTime.push(doc.response_time)
 
         if (!aggregated.status[doc.status])
@@ -79,19 +86,38 @@ const { MongoClient, ISODate } = require('mongodb')
             aggregated.server_error += 1
 
         // record errored requests
-        if (400 <= doc.status && doc.status < 600 )
+        if (400 <= doc.status && doc.status < 600)
             await db.collection('erroredRequests').update(
                 { _id: doc._id },
                 { $set: doc },
                 { upsert: true }
             )
+
+        // server error should be reported
+        if (500 <= doc.status && doc.status < 600) {
+            offendingRequests.push(doc)
+            if (offendingRequests.length > maxOffender)
+                offendingRequests.shift()
+        }
+
+        results.push(aggregated)
     }
 
     if (lastTime) {
-
+        if (clear) {
+            await db.collection('introspection').deleteMany(
+                { time: { $lt: prevTimeId * resolution * 1000 } }
+            )
+        } else {
+            await db.collection('introspection').updateMany(
+                { time: { $lt: lastTime } },
+                { $set: { inspected: true } }
+            )
+        }
     }
 
     db.close()
 })(db).catch( e => {
     process.stderr.write(e.stack+'\n')
 })
+
