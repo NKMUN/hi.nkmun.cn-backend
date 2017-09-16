@@ -45,7 +45,7 @@ route.post('/applications/',
 )
 
 route.get('/applications/',
-    AccessFilter('admin'),
+    AccessFilter('staff.application'),
     async ctx => {
         let projection = {
             _id: 0,
@@ -63,7 +63,7 @@ route.get('/applications/',
 )
 
 route.get('/applications/:id',
-    AccessFilter('admin'),
+    AccessFilter('staff.application'),
     async ctx => {
         let result = await ctx.db.collection('application').findOne({ _id: ctx.params.id })
         if (result) {
@@ -78,7 +78,7 @@ route.get('/applications/:id',
 )
 
 route.patch('/applications/:id',
-    AccessFilter('admin'),
+    AccessFilter('staff.application'),
     LogOp('application', 'seat-alloc'),
     async ctx => {
         let {
@@ -99,7 +99,7 @@ route.patch('/applications/:id',
 )
 
 route.delete('/applications/:id',
-    AccessFilter('admin'),
+    AccessFilter('staff.application.nuke'),
     LogOp('application', 'nuke'),
     async ctx => {
         let {

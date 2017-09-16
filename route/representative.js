@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
-const { AccessFilter } = require('./auth')
-const { IsSelfOrAdmin, School } = require('./school')
+const { IsSchoolSelfOr, School } = require('./school')
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { toId, newId } = require('../lib/id-util')
@@ -29,7 +28,7 @@ const makeRepresentativeEntry = (representative, session, school) => {
 }
 
 route.get('/schools/:id/representatives/',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff', 'finance'),
     async ctx => {
         ctx.status = 200
         ctx.body = await ctx.db.collection('representative').aggregate([
@@ -69,7 +68,7 @@ route.get('/schools/:id/representatives/',
 )
 
 route.get('/schools/:id/representatives/:rid',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff', 'finance'),
     async ctx => {
         let representative = await ctx.db.collection('representative').findOne({ _id: ctx.params.rid, school: ctx.params.id })
         if (representative) {
@@ -86,7 +85,7 @@ route.get('/schools/:id/representatives/:rid',
 )
 
 route.patch('/schools/:id/representatives/:rid',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff', 'finance'),
     LogOp('representative', 'update'),
     async ctx => {
         let payload = getPayload(ctx)
@@ -96,7 +95,7 @@ route.patch('/schools/:id/representatives/:rid',
         delete payload.school
         delete payload.round
         // certain fields can only be updated by admin
-        if (ctx.token.access.indexOf('admin') === -1) {
+        if ( ! ctx.hasAccessTo('staff.representative') ) {
             delete payload.session
             delete payload.withdraw
         }

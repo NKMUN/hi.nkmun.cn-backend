@@ -9,14 +9,13 @@ const { LogOp } = require('../lib/logger')
 // either from or to should be school itself
 async function hasAccess(ctx, from, to) {
     let {
-        school,
-        access
+        school
     } = ctx.token
 
-    if ( access.indexOf('admin') !== -1 )
+    if ( ctx.hasAccessTo('staff') )
         return true
-
-    if ( access.indexOf('school') !== -1 )
+    
+    if ( ctx.hasAccessTo('leader') )
         return school === from || school === to
 
     return false
@@ -61,7 +60,7 @@ async function removeUnavailable(ctx, school, session) {
 }
 
 route.get('/exchanges/',
-    AccessFilter( 'school', 'admin' ),
+    AccessFilter('leader', 'staff'),
     async ctx => {
         let {
             from,
@@ -83,7 +82,7 @@ route.get('/exchanges/',
 )
 
 route.post('/exchanges/',
-    AccessFilter( 'school' ),
+    AccessFilter('leader'),
     LogOp('exchange', 'submit'),
     async ctx => {
         let {
@@ -158,7 +157,7 @@ route.post('/exchanges/',
 )
 
 route.post('/exchanges/:id',
-    AccessFilter('school', 'admin'),
+    AccessFilter('leader'),
     LogOp('exchange', 'process'),
     Exchange,
     async ctx => {

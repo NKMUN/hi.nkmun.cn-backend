@@ -41,9 +41,10 @@ route.post('/images/',
 )
 
 route.get('/images/:id',
-    AccessFilter('admin', 'root'),
+    AccessFilter( 'admin' ),
     async ctx => {
-
+        ctx.status = 501
+        ctx.body = { message: 'Not Implememted' }
     }
 )
 

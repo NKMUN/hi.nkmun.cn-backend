@@ -45,7 +45,7 @@ route.post('/login',
 )
 
 route.get('/users/',
-    AccessFilter('admin', 'root'),
+    AccessFilter('admin'),
     async ctx => {
         ctx.status = 200
         ctx.body = await ctx.db.collection('user').aggregate([
@@ -67,7 +67,7 @@ route.get('/users/',
 )
 
 route.patch('/users/:id',
-    AccessFilter('admin', 'root'),
+    AccessFilter('admin'),
     LogOp('user', 'patch'),
     async ctx => {
         const {

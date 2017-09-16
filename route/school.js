@@ -8,19 +8,16 @@ const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 const { filterExchange } = require('./exchange')
 const escapeForRegexp = require('escape-string-regexp')
+const curry = require('curry')
 
-async function IsSelfOrAdmin(ctx, next) {
+const IsSchoolSelfOr = (...requiredAccesses) => async (ctx, next) => {
     if ( ! ctx.token )
         await TokenParser(ctx)
-
-    if ( ctx.token.access.indexOf('admin') !== -1 )
+    
+    if ( ctx.token.access.includes('leader') && ctx.params.id === ctx.token.school )
         return await next()
-
-    if ( ctx.token.access.indexOf('school') !== -1 && ctx.params.id === ctx.token.school )
-        return await next()
-
-    ctx.status = 403
-    ctx.body = { error: 'forbidden' }
+    else
+        return await AccessFilter(...requiredAccesses)(ctx, next)
 }
 
 async function School(ctx, next) {
@@ -35,7 +32,7 @@ async function School(ctx, next) {
 }
 
 route.get('/schools/',
-    AccessFilter('school', 'admin'),
+    AccessFilter('leader', 'staff', 'finance'),
     async ctx => {
         let filter = {}
         if (ctx.query.stage)
@@ -59,7 +56,7 @@ route.get('/schools/',
 )
 
 route.get('/schools/:id',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff', 'finance', 'admin'),
     School,
     async ctx => {
         // add 'exchanges' field
@@ -74,7 +71,7 @@ route.get('/schools/:id',
 )
 
 route.get('/schools/:id/seat',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff', 'finance', 'admin'),
     School,
     async ctx => {
         ctx.status = 200
@@ -83,7 +80,7 @@ route.get('/schools/:id/seat',
 )
 
 route.patch('/schools/:id',
-    AccessFilter('admin'),
+    AccessFilter('staff', 'finance', 'admin'),
     School,
     LogOp('school', 'patch'),
     async ctx => {
@@ -134,7 +131,7 @@ route.patch('/schools/:id',
 )
 
 route.post('/schools/:id/seat',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff', 'finance', 'admin'),
     LogOp('school', 'seat'),
     School,
     Sessions,
@@ -232,7 +229,7 @@ route.post('/schools/:id/seat',
             let seat = ctx.school.seat['1']
             // NOTE: admin can bypass dual session requirement
             let dualSessionHasDualSeats = (
-                  ctx.token.access.indexOf('admin') !== -1
+                  ctx.hasAccessTo('staff')
                 ? true
                 : ctx.sessions.filter( $ => $.dual )
                               .every( $ => (ctx.school.seat['1'][$._id] || 0) % 2 === 0 )
@@ -331,7 +328,7 @@ route.post('/schools/:id/seat',
 )
 
 route.delete('/schools/:id',
-    AccessFilter('admin'),
+    AccessFilter('staff.nuke'),
     School,
     LogOp('school', 'nuke'),
     async ctx => {
@@ -364,6 +361,6 @@ route.delete('/schools/:id',
 
 module.exports = {
     routes: route.routes(),
-    IsSelfOrAdmin,
+    IsSchoolSelfOr,
     School,
 }

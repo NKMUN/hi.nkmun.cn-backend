@@ -1,6 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
-const { IsSelfOrAdmin, School } = require('./school')
+const { IsSchoolSelfOr, School } = require('./school')
 const { Sessions } = require('./session')
 
 function differenceOfDays(a, b) {
@@ -73,7 +73,7 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
 }
 
 route.get('/schools/:id/billing',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('finance'),
     School,
     async ctx => {
         const round = ctx.query.round || ctx.school.stage[0] || '1'

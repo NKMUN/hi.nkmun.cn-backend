@@ -11,7 +11,7 @@ async function getHotel(ctx, id) {
 }
 
 route.get('/hotels/',
-    AccessFilter('admin', 'root', 'school'),
+    AccessFilter('leader', 'staff.accommodation'),
     async ctx => {
         ctx.status = 200
         ctx.body = (await ctx.db.collection('hotel').find({}).toArray()).map( toId )
@@ -19,7 +19,7 @@ route.get('/hotels/',
 )
 
 route.get('/hotels/:id',
-    AccessFilter('root'),
+    AccessFilter('admin'),
     async ctx => {
         ctx.status = 200
         ctx.body = getHotel(ctx, ctx.params.id)
@@ -27,7 +27,7 @@ route.get('/hotels/:id',
 )
 
 route.post('/hotels/',
-    AccessFilter('root'),
+    AccessFilter('admin'),
     async ctx => {
         let {
             name,
@@ -58,7 +58,7 @@ route.post('/hotels/',
 )
 
 route.delete('/hotels/:id',
-    AccessFilter('root'),
+    AccessFilter('admin'),
     async ctx => {
         await ctx.db.collection('hotel').deleteOne({ _id: ctx.params.id })
 
@@ -72,7 +72,7 @@ route.delete('/hotels/:id',
 )
 
 route.patch('/hotels/:id',
-    AccessFilter('root'),
+    AccessFilter('admin'),
     async ctx => {
         const {
             stock: target

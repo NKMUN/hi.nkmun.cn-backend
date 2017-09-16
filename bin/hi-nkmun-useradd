@@ -7,9 +7,11 @@ program
   .usage('--user <user> [options]')
   .option('-u, --user <user>', 'User name', String)
   .option('-d, --db, <connStr>',  'Database, default: mongodb://localhost:27017/nkmun', String)
-  .option('-a, --admin', 'Admin access')
   .option('-x, --root',  'Root access')
-  .option('-s, --school <schoolId>', 'School access', String)
+  .option('-a, --admin', 'Admin access')
+  .option('-s, --staff', 'Staff access')
+  .option('-f, --finance', 'Finance access')
+  .option('-s, --school <schoolId>', 'School Leader access', String)
   .option('-p, --password', 'Prompt for password')
   .option('-r, --reserved',   'Set as reserved user')
   .option('-R, --unreserved', 'Unset as reserved user')
@@ -20,8 +22,10 @@ process.on('SIGINT', () => process.exit(127) )
 let {
     db = 'mongodb://localhost:27017/nkmun',
     user: userId = '' ,
-    admin = false,
     root = false,
+    admin = false,
+    staff = false,
+    finance = false,
     school = false,
     password = false,
     reserved = false,
@@ -39,10 +43,14 @@ if (!userId) {
 
     // access
     let access = []
-    if (admin)
-        access.push('admin')
     if (root)
         access.push('root')
+    if (admin)
+        access.push('admin')
+    if (staff)
+        access.push('staff')
+    if (finance)
+        access.push('finance')
     if (school)
         access.push('school')
     if (access.length > 0) {

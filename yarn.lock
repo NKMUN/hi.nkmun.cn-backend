@@ -171,6 +171,10 @@ csv-stringify@^1.0.4:
   dependencies:
     lodash.get "^4.0.0"
 
+curry@^1.2.0:
+  version "1.2.0"
+  resolved "http://registry.npm.taobao.org/curry/download/curry-1.2.0.tgz#9e6dd289548dba7e653d5ae3fe903fe7dfb33af2"
+
 cycle@1.0.x:
   version "1.0.3"
   resolved "http://registry.npm.taobao.org/cycle/download/cycle-1.0.3.tgz#21e80b2be8580f98b468f379430662b046c34ad2"

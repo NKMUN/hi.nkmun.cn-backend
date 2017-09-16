@@ -1,7 +1,7 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const { IsSelfOrAdmin, School } = require('./school')
+const { IsSchoolSelfOr, School } = require('./school')
 const { LogOp } = require('../lib/logger')
 const { toId, newId } = require('../lib/id-util')
 const { readFile, unlink } = require('mz/fs')
@@ -10,7 +10,7 @@ const { Mailer } = require('./mailer')
 const getPayload = require('./lib/get-payload')
 
 route.post('/schools/:id/payments/',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('finance'),
     LogOp('payment', 'payment'),
     School,
     async ctx => {
@@ -69,7 +69,7 @@ route.post('/schools/:id/payments/',
 )
 
 route.patch('/schools/:id/payments/',
-    AccessFilter('admin'),
+    AccessFilter('finance'),
     School,
     LogOp('payment', 'review'),
     Mailer,
@@ -165,7 +165,7 @@ route.patch('/schools/:id/payments/',
 )
 
 route.get('/schools/:id/payments/',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('finance'),
     async ctx => {
         let filter = { school: ctx.params.id }
         if (ctx.query.round)
@@ -197,7 +197,7 @@ route.get('/schools/:id/payments/',
 )
 
 route.get('/schools/:id/payments/:pid',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('finance'),
     async ctx => {
         let payment = await ctx.db.collection('payment').findOne({ _id: ctx.params.pid, school: ctx.params.id })
         if (payment) {

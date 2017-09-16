@@ -39,10 +39,10 @@ route.get('/config',
 
 route.get('/config/config',      ReturnConfig('config') )
 route.get('/config/application', ReturnConfig('application') )
-route.get('/config/mail',        AccessFilter('root'), ReturnConfig('mail') )
+route.get('/config/mail',        AccessFilter('admin'), ReturnConfig('mail') )
 
 route.put('/config/:id',
-    AccessFilter('root'),
+    AccessFilter('admin'),
     LogOp('config', 'write'),
     async ctx => {
         let payload = getPayload(ctx)

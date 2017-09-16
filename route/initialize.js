@@ -4,7 +4,7 @@ const { AccessFilter } = require('./auth')
 const { LogOp } = require('../lib/logger')
 
 route.post('/initialize',
-    AccessFilter('root'),
+    AccessFilter('admin'),
     LogOp('init', 'initialize'),
     async ctx => {
         const { db } = ctx

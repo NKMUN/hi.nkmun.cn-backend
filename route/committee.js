@@ -25,7 +25,7 @@ route.post('/committees/',
 )
 
 route.get('/committees/',
-    AccessFilter('admin', 'root'),
+    AccessFilter('staff', 'finance', 'admin'),
     async ctx => {
         const committees = await ctx.db.collection('committee').find({}).toArray()
         ctx.status = 200

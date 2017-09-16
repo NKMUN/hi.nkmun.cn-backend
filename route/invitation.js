@@ -9,7 +9,7 @@ const { sign } = require('jsonwebtoken')
 const { newId } = require('../lib/id-util')
 
 route.post('/invitations/',
-    AccessFilter('admin'),
+    AccessFilter('staff.application'),
     LogOp('invitation', 'create'),
     Mailer,
     async ctx => {

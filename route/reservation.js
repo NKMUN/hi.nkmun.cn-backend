@@ -1,17 +1,16 @@
 const Router = require('koa-router')
 const route = new Router()
-const { AccessFilter } = require('./auth')
-const { IsSelfOrAdmin, School } = require('./school')
+const { IsSchoolSelfOr, School } = require('./school')
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { toId, newId } = require('../lib/id-util')
 
 route.post('/schools/:id/reservations/',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff.accommodation'),
     LogOp('reservation', 'reserve'),
     School,
     async ctx => {
-        if ( ctx.token.access.indexOf('admin') === -1
+        if ( ! ctx.hasAccessTo('staff.accommodation')
              && ( ctx.school.stage.endsWith('.paid')
                || ctx.school.stage.endsWith('.complete')
                || Number(ctx.school.stage[0]) >= 3
@@ -87,15 +86,17 @@ route.post('/schools/:id/reservations/',
                     created: new Date()
                 }))
             )
-            if ( ctx.token.access.indexOf('school') !== -1
-                 && Number(ctx.school.stage[0]) >= 1
-                 && Number(ctx.school.stage[0]) <= 2
-            ) {
-                await ctx.db.collection('school').updateOne(
-                    { _id: ctx.params.id },
-                    { $set: { stage: `${ctx.school.stage[0]}.payment` } }
-                )
-            }
+
+            // TODO: deprecate to standalone accommodation confirmation API
+            // if ( ctx.token.access.indexOf('school') !== -1
+            //      && Number(ctx.school.stage[0]) >= 1
+            //      && Number(ctx.school.stage[0]) <= 2
+            // ) {
+            //     await ctx.db.collection('school').updateOne(
+            //         { _id: ctx.params.id },
+            //         { $set: { stage: `${ctx.school.stage[0]}.payment` } }
+            //     )
+            // }
             ctx.status = 200
             ctx.body = { inserted: insertedIds }
         }
@@ -103,7 +104,7 @@ route.post('/schools/:id/reservations/',
 )
 
 route.get('/schools/:id/reservations/',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff.accommodation'),
     async ctx => {
         ctx.status = 200
         ctx.body = await ctx.db.collection('reservation').aggregate([
@@ -144,7 +145,7 @@ route.get('/schools/:id/reservations/',
 )
 
 route.get('/schools/:id/reservations/:rid',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff.accommodation'),
     async ctx => {
         let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid, school: ctx.params.id })
         if (reservation) {
@@ -176,7 +177,7 @@ route.get('/schools/:id/reservations/:rid',
 )
 
 route.delete('/schools/:id/reservations/:rid',
-    IsSelfOrAdmin,
+    IsSchoolSelfOr('staff.accommodation'),
     LogOp('reservation', 'delete'),
     async ctx => {
         let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })

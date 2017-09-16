@@ -12,7 +12,7 @@ async function Sessions(ctx, next) {
 }
 
 route.get('/sessions/',
-    AccessFilter('admin', 'root'),
+    AccessFilter('staff'),
     Sessions,
     async ctx => {
         ctx.status = 200
@@ -21,7 +21,7 @@ route.get('/sessions/',
 )
 
 route.put('/sessions/',
-    AccessFilter('admin', 'root'),
+    AccessFilter('staff'),
     async ctx => {
         await ctx.db.collection('session').remove({})
         await ctx.db.collection('session').insertMany( getPayload(ctx).map(fromId) )

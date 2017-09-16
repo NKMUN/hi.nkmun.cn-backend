@@ -1,6 +1,5 @@
 const Router = require('koa-router')
 const route = new Router()
-const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { Mailer } = require('./mailer')
@@ -26,7 +25,7 @@ route.post('/registration',
         let user = Object.assign(
             {
                 user: login.user,
-                access: ['school'],
+                access: ['leader'],
                 school: schoolId,
                 reserved: false,
                 created: new Date()
