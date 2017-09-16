@@ -19,13 +19,11 @@ const GV = (obj, key) => {
     return cur
 }
 
-const isLeaderText = val => {
-    return val ? '领队' : ''
-}
+const GNV = (obj, key) => GV(obj, key) || 0
 
-const withdrawText = val => {
-    return val ? '退会' : ''
-}
+const isLeaderText = val => val ? '领队' : ''
+
+const withdrawText = val => val ? '退会' : ''
 
 const genderText = val => {
     switch (val) {
@@ -219,6 +217,27 @@ const LOOKUP_COMMITTEE = [
     { $sort: { role: -1, name: -1 } }
 ]
 
+const LOOKUP_SCHOOL_SEAT = [
+    { $sort: { 'school.name': -1 } },
+    { $match: { rejected: { $ne: true } } },
+    { $lookup: {
+        from: 'school',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'registered'
+    } },
+    { $project: {
+        name: '$school.name',
+        appSeat: '$seat',
+        school: {$arrayElemAt: ['$registered', 0]}
+    } },
+    { $project: {
+        name: '$name',
+        r1: {$ifNull: ['$school.seat.1', '$appSeat']},
+        r2: {$ifNull: ['$school.seat.2', {}]}
+    }}
+]
+
 route.get('/export/representatives',
     AccessFilter('staff'),
     async ctx => {
@@ -285,6 +304,28 @@ route.get('/export/committees',
             ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE),
             COMMITTEE.columns,
             COMMITTEE.map
+        )
+    }
+)
+
+route.get('/export/seats',
+    AccessFilter('staff'),
+    async ctx => {
+        const sessions = await ctx.db.collection('session')
+            .find({ reserved: { $ne: true } })
+            .map(({_id, name}) => ({ id: _id, name }))
+            .toArray()
+        const columns = ['学校', ...sessions.map($ => $.name)]
+        const columnMapper = $ => [
+            GV($, 'name'),
+            ...sessions.map(({id}) => GNV($, `r1.${id}`) + GNV($, `r2.${id}`))
+        ]
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('school').aggregate(LOOKUP_SCHOOL_SEAT),
+            columns,
+            columnMapper
         )
     }
 )
