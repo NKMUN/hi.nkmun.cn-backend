@@ -78,7 +78,7 @@ route.patch('/hotels/:id',
             stock: target
         } = getPayload(ctx)
 
-        if (target !==undefined ) {
+        if (target !==undefined) {
             const {
                 stock = 0,
                 available = 0
