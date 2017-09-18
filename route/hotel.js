@@ -35,6 +35,8 @@ route.post('/hotels/',
             price = 0,
             notBefore = null,
             notAfter = null,
+            roomshareInitiatorRate = 1,
+            roomshareRecipientRate = 0,
             stock = 0
         } = getPayload(ctx)
 
@@ -48,6 +50,8 @@ route.post('/hotels/',
             price,
             notBefore,
             notAfter,
+            roomshareInitiatorRate,
+            roomshareRecipientRate,
             stock,
             available: stock
         })
