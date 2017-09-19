@@ -24,7 +24,9 @@ const Route_GetReservationById = async ctx => {
                 id: hotel._id,
                 name: hotel.name,
                 type: hotel.type,
-                price: hotel.price
+                price: hotel.price,
+                notBefore: hotel.notBefore,
+                notAfter: hotel.notAfter
             },
             school: {
                 id: school._id,
@@ -117,16 +119,6 @@ route.post('/schools/:id/reservations/',
                 : null
         })
 
-        // TODO: deprecate to standalone accommodation confirmation API
-        // if ( ctx.token.access.indexOf('school') !== -1
-        //      && Number(ctx.school.stage[0]) >= 1
-        //      && Number(ctx.school.stage[0]) <= 2
-        // ) {
-        //     await ctx.db.collection('school').updateOne(
-        //         { _id: ctx.params.id },
-        //         { $set: { stage: `${ctx.school.stage[0]}.payment` } }
-        //     )
-        // }
         ctx.status = 200
         ctx.params.rid = insertedId
         await Route_GetReservationById(ctx)
@@ -170,6 +162,8 @@ route.get('/schools/:id/reservations/',
                     name: '$hotel.name',
                     type: '$hotel.type',
                     price: '$hotel.price',
+                    notBefore: '$hotel.notBefore',
+                    notAfter: '$hotel.notAfter'
                 },
                 school: {
                     id: '$school._id',
@@ -197,7 +191,7 @@ route.get('/schools/:id/reservations/',
         .toArray()
 
         const roomshares = await ctx.db.collection('reservation').aggregate([
-            { $match: { 'roomshare.school': ctx.params.id, 'roomshare.state': 'accepted' } },
+            { $match: { 'roomshare.school': ctx.params.id, 'roomshare.state': { $ne: 'rejected' } } },
             { $lookup: {
                 from: 'hotel',
                 localField: 'hotel',
@@ -231,6 +225,8 @@ route.get('/schools/:id/reservations/',
                     name: '$hotel.name',
                     type: '$hotel.type',
                     price: '$hotel.price',
+                    notBefore: '$hotel.notBefore',
+                    notAfter: '$hotel.notAfter'
                 },
                 school: {
                     id: '$school._id',
@@ -269,18 +265,16 @@ route.patch('/schools/:id/reservations/:rid',
         let {
             checkIn,
             checkOut,
-            roomshareWith
+            roomshare
         } = getPayload(ctx)
+
+        const reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
+        const hotel = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
 
         // verify checkIn / checkOut
         if (checkIn || checkOut) {
-            const valid = await ctx.db.collection('hotel')
-                .findOne({ _id: hotel })
-                .then(hotel =>
-                    hotel
-                    && (checkIn ? new Date(checkIn).getTime() >= new Date(hotel.notBefore).getTime() : true)
-                    && (checkOut ? new Date(checkOut).getTime() <= new Date(hotel.notAfter).getTime() : true)
-                )
+            const valid = (checkIn ? new Date(checkIn).getTime() >= new Date(hotel.notBefore).getTime() : true)
+                       && (checkOut ? new Date(checkOut).getTime() <= new Date(hotel.notAfter).getTime() : true)
             if (!valid) {
                 ctx.status = 400
                 ctx.body = { error: 'bad request', message: 'checkIn or checkOut beyond hotel time limits' }
@@ -288,9 +282,9 @@ route.patch('/schools/:id/reservations/:rid',
             }
         }
 
-        const stored = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
-
-        let update = {}
+        let update = {
+            modified_at: new Date()
+        }
         if (ctx.hasAccessTo('staff.accommodation')) {
             // staff can do anything they want
             if (checkIn) {
@@ -299,8 +293,10 @@ route.patch('/schools/:id/reservations/:rid',
             if (checkOut) {
                 update.checkOut = checkOut
             }
-            if (roomshare) {
-                if (!stored.roomshare || stored.roomshare.school !== roomshare) {
+            if (roomshare === null) {
+                update.roomshare = null
+            } else {
+                if (!reservation.roomshare || reservation.roomshare.school !== roomshare) {
                     update.roomshare = {
                         school: roomshare,
                         state: roomshare ? 'accepted' : null
@@ -311,21 +307,25 @@ route.patch('/schools/:id/reservations/:rid',
             // leader must stick with strict rules
             const school = await ctx.db.collection('school').findOne({ _id: ctx.params.id })
             const round = school.stage[0]
-            if (stored.round !== round) {
+            if (reservation.round !== round) {
                 ctx.status = 400
                 ctx.body = { error: 'bad request', message: 'invalid stage to modify reservation' }
                 return
             }
-            if (roomshareWith) {
-                if (stored.roomshare && store.roomshare.state === 'accepted') {
+            if (roomshare !== undefined) {
+                if (reservation.roomshare && reservation.roomshare.state === 'accepted') {
                     ctx.status = 400
                     ctx.body = { error: 'bad request', message: 'can not modify confirmed roomshare' }
                     return
                 }
-                if (!stored.roomshare || stored.roomshare.school !== roomshare) {
-                    update.roomshare = {
-                        school: roomshare,
-                        state: roomshare ? 'pending' : null
+                if (roomshare === null) {
+                    update.roomshare = null
+                } else {
+                    if (!reservation.roomshare || reservation.roomshare.school !== roomshare) {
+                        update.roomshare = {
+                            school: roomshare,
+                            state: roomshare ? 'pending' : null
+                        }
                     }
                 }
             }
@@ -362,6 +362,72 @@ route.delete('/schools/:id/reservations/:rid',
 
         ctx.status = 200
         ctx.body = { message: 'deleted' }
+    }
+)
+
+route.post('/schools/:id/roomshare/:rid',
+    IsSchoolSelfOr('staff.accommodation'),
+    async ctx => {
+        const {
+            accept,
+            reject
+        } = getPayload(ctx)
+
+        let update = {
+            responded_at: new Date()
+        }
+        if (accept) {
+            update = { 'roomshare.state': 'accepted' }
+        }
+        if (reject) {
+            update = { 'roomshare.state': 'rejected' }
+        }
+
+        const {
+            modifiedCount
+        } = await ctx.db.collection('reservation').updateOne(
+            { _id: ctx.params.rid, 'roomshare.school': ctx.params.id, 'roomshare.state': 'pending' },
+            { $set: update }
+        )
+
+        if (modifiedCount === 1) {
+            const reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
+            const hotel = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
+            // roomshare reservation is stored on initiating school
+            const school = await ctx.db.collection('school').findOne({ _id: ctx.params.id })
+            const roomshareSchool = await ctx.db.collection('school').findOne({ _id: reservation.school })
+            // NOTE: match format returned by GET /reservations/
+            ctx.status = 200
+            ctx.body = {
+                id: reservation._id,
+                type: 'roomshare',
+                checkIn: reservation.checkIn,
+                checkOut: reservation.checkOut,
+                round: 'roomshare',
+                hotel: {
+                    id: hotel._id,
+                    name: hotel.name,
+                    type: hotel.type,
+                    price: hotel.price,
+                    notBefore: hotel.notBefore,
+                    notAfter: hotel.notAfter
+                },
+                school: {
+                    id: school._id,
+                    name: school.school.name
+                },
+                roomshare: {
+                    school: {
+                        id: roomshareSchool._id,
+                        name: roomshareSchool.school.name
+                    },
+                    state: reservation.roomshare.state
+                }
+            }
+        } else {
+            ctx.status = 410
+            ctx.body = { error: 'gone', message: 'peer cancelled roomshare' }
+        }
     }
 )
 

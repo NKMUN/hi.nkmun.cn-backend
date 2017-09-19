@@ -131,7 +131,7 @@ route.patch('/schools/:id',
 )
 
 route.post('/schools/:id/seat',
-    IsSchoolSelfOr('staff', 'finance', 'admin'),
+    IsSchoolSelfOr('staff'),
     LogOp('school', 'seat'),
     School,
     Sessions,
@@ -246,21 +246,6 @@ route.post('/schools/:id/seat',
             processed = true
         }
 
-        // allocSecondRound
-        if (allocSecondRound) {
-            // only admin can allocate second round seats
-            if ( ! await AccessFilter('admin')(ctx) )
-                return
-            let {
-                matchedCount
-            } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.school._id, stage: '1.complete' },
-                { $set: { stage: '2.reservation' } }
-            )
-            processed = matchedCount === 1
-            // TODO: maybe send second round email?
-        }
-
         // startConfirm
         if (startConfirm) {
             if ( ! await AccessFilter('admin')(ctx) )
@@ -356,6 +341,64 @@ route.delete('/schools/:id',
 
         ctx.status = 200
         ctx.body = { message: 'nuked' }
+    }
+)
+
+route.post('/schools/:id/progress',
+    IsSchoolSelfOr('staff', 'finance', 'admin'),
+    School,
+    async ctx => {
+        const {
+            confirmReservation,
+            confirmSecondRound
+        } = getPayload(ctx)
+
+        if (confirmReservation) {
+            const reservations = await ctx.db.collection('reservation').find({ school: ctx.params.id }).toArray()
+            const roomshares = await ctx.db.collection('reservation').find({ 'roomshare.school': ctx.params.id }).toArray()
+            // all roomshare must be null or accepted
+            const reservationsResolved = reservations.every(({roomshare}) => 
+                roomshare === null || roomshare.state === 'accepted'
+            )
+            const roomsharesResolved = roomshares.every(({roomshare: {state}}) =>
+                state === 'accepted' || state === 'rejected'
+            )
+            if (reservationsResolved && roomsharesResolved) {
+                const {
+                    modifiedCount
+                } = await ctx.db.collection('school').updateOne(
+                    { _id: ctx.params.id, stage: ctx.school.stage[0]+'.reservation' },
+                    { $set: { stage: ctx.school.stage.replace('.reservation', '.payment')} }
+                )           
+                ctx.status = 200
+                ctx.body = { message: 'ok' }
+            } else {
+                ctx.status = 409
+                ctx.body = { error: 'conflict', message: 'must resolve all roomshares before proceed' }
+            }
+        }
+
+        if (confirmSecondRound) {
+            // only admin can allocate second round seats
+            if (ctx.hasAccessTo('staff')) {
+                let {
+                    matchedCount
+                } = await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id, stage: '1.complete' },
+                    { $set: { stage: '2.reservation' } }
+                )
+                if (matchedCount === 1) {
+                    ctx.status = 200
+                    ctx.body = { ok: 1 }
+                } else {
+                    ctx.status = 409
+                    ctx.body = { error: 'conflict', message: 'invalid stage to progress second round' }
+                }
+            } else {
+                ctx.status = 403
+                ctx.body = { error: 'forbidden' }
+            }
+        }
     }
 )
 
