@@ -165,7 +165,7 @@ route.patch('/schools/:id/payments/',
 )
 
 route.get('/schools/:id/payments/',
-    IsSchoolSelfOr('finance'),
+    IsSchoolSelfOr('staff', 'finance'),
     async ctx => {
         let filter = { school: ctx.params.id }
         if (ctx.query.round)
@@ -197,7 +197,7 @@ route.get('/schools/:id/payments/',
 )
 
 route.get('/schools/:id/payments/:pid',
-    IsSchoolSelfOr('finance'),
+    IsSchoolSelfOr('staff', 'finance'),
     async ctx => {
         let payment = await ctx.db.collection('payment').findOne({ _id: ctx.params.pid, school: ctx.params.id })
         if (payment) {

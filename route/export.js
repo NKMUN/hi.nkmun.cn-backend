@@ -239,7 +239,7 @@ const LOOKUP_SCHOOL_SEAT = [
 ]
 
 route.get('/export/representatives',
-    AccessFilter('staff'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -252,7 +252,7 @@ route.get('/export/representatives',
 )
 
 route.get('/export/leaders',
-    AccessFilter('staff'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -268,7 +268,7 @@ route.get('/export/leaders',
 )
 
 route.get('/export/billings',
-    AccessFilter('finance'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -283,7 +283,7 @@ route.get('/export/billings',
 )
 
 route.get('/export/reservations',
-    AccessFilter('staff'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -296,7 +296,7 @@ route.get('/export/reservations',
 )
 
 route.get('/export/committees',
-    AccessFilter('staff'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -309,7 +309,7 @@ route.get('/export/committees',
 )
 
 route.get('/export/seats',
-    AccessFilter('staff'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         const sessions = await ctx.db.collection('session')
             .find({ reserved: { $ne: true } })
@@ -346,7 +346,7 @@ const NameCreator = () => {
 }
 
 route.get('/export/committees/photos',
-    AccessFilter('staff'),
+    AccessFilter('finance', 'admin'),
     async ctx => {
         if (!ctx.query.token && await AccessFilter('admin', 'root')(ctx)){
             ctx.status = 201

@@ -73,7 +73,7 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
 }
 
 route.get('/schools/:id/billing',
-    IsSchoolSelfOr('finance'),
+    IsSchoolSelfOr('staff', 'finance'),
     School,
     async ctx => {
         const round = ctx.query.round || ctx.school.stage[0] || '1'
