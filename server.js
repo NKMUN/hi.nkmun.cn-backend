@@ -50,6 +50,7 @@ module.exports = {
         app.use( require('./route/export').routes )
         app.use( require('./route/images').routes )
         app.use( require('./route/committee').routes )
+        app.use( require('./route/volunteer').routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {

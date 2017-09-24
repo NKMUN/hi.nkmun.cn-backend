@@ -167,6 +167,49 @@ const COMMITTEE = {
     ]
 }
 
+const VOLUNTEER = {
+    columns: [
+        '学校',
+        '姓名',
+        '性别',
+        '手机',
+        '邮箱',
+        'QQ',
+        '证件类型',
+        '证件号码',
+        '紧急联系人关系',
+        '紧急联系人姓名',
+        '紧急联系人手机',
+        '紧急联系人证件类型',
+        '紧急联系人证件号码',
+        '来宁日期',
+        '离宁日期',
+        '酒店入住日期',
+        '酒店退房日期',
+        '备注'
+    ],
+    map: $ => [
+       GV($, 'school'),
+       GV($, 'contact.name'),
+       genderText( GV($, 'contact.gender') ),
+       GV($, 'contact.phone'),
+       GV($, 'contact.email'),
+       GV($, 'contact.qq'),
+       idTypeText( GV($, 'identification.type') ),
+       GV($, 'identification.number'),
+       guardianTypeText( GV($, 'guardian.type') ),
+       GV($, 'guardian.name'),
+       GV($, 'guardian.phone'),
+       idTypeText( GV($, 'guardian_identification.type') ),
+       GV($, 'guardian_identification.number'),
+       GV($, 'arriveDate'),
+       GV($, 'departDate'),
+       GV($, 'checkInDate'),
+       GV($, 'checkOutDate'),
+       GV($, 'comment')
+    ]
+}
+
 const createCsvStream = (cursor, columns, map) => {
     const stream = new CsvStringify()
     stream.write(columns)
@@ -215,6 +258,10 @@ const LOOKUP_RESERVATION = [
 
 const LOOKUP_COMMITTEE = [
     { $sort: { role: -1, 'contact.name': -1 } }
+]
+
+const LOOKUP_VOLUNTEER = [
+    { $sort: { 'contact.name': -1 } }
 ]
 
 const LOOKUP_SCHOOL_SEAT = [
@@ -306,6 +353,19 @@ route.get('/export/committees',
             COMMITTEE.map
         )
     }
+)
+
+route.get('/export/volunteers',
+AccessFilter('finance', 'admin'),
+async ctx => {
+    ctx.status = 200
+    ctx.set('content-type', 'text/csv;charset=utf-8')
+    ctx.body = createCsvStream(
+        ctx.db.collection('volunteer').aggregate(LOOKUP_VOLUNTEER),
+        VOLUNTEER.columns,
+        VOLUNTEER.map
+    )
+}
 )
 
 route.get('/export/seats',
