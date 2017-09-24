@@ -214,7 +214,7 @@ const LOOKUP_RESERVATION = [
 ]
 
 const LOOKUP_COMMITTEE = [
-    { $sort: { role: -1, name: -1 } }
+    { $sort: { role: -1, 'contact.name': -1 } }
 ]
 
 const LOOKUP_SCHOOL_SEAT = [
