@@ -120,7 +120,8 @@ route.post('/exchanges/',
 
         let selfInExchange = await ctx.db.collection('exchange').count({
             'from.school': schoolId,
-            'from.session': selfSession
+            'from.session': selfSession,
+            state: { $nin: ['accepted', 'refused'] }
         }, {
             _id: 1,
             school: 1,
