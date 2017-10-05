@@ -68,6 +68,20 @@ route.post('/invitations/',
     }
 )
 
+route.get('/invitations/',
+    AccessFilter('staff', 'finance'),
+    async ctx => {
+        const { school: schoolId } = ctx.query
+        const invitation = await ctx.db.collection('invitation').findOne({ school: schoolId })
+        ctx.status = 200
+        ctx.body = {
+            school: schoolId,
+            invitation: invitation.invitation,
+            used: invitation.used
+        }
+    }
+);
+
 route.get('/invitations/:code', async ctx => {
     const { code } = ctx.params
     let invitation = await ctx.db.collection('invitation').findOne({
