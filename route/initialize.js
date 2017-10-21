@@ -48,6 +48,8 @@ route.post('/initialize',
             type: null,
             dual: false,
             reserved: true,
+            requiresChairman: false,
+            exchangeable: false,
             price: 0
         })
 
@@ -57,6 +59,8 @@ route.post('/initialize',
             type: null,
             dual: false,
             reserved: true,
+            requiresChairman: false,
+            exchangeable: false,
             price: 0
         })
 

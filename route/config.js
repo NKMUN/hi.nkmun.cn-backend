@@ -32,6 +32,7 @@ route.get('/config',
                 dual: { $ifNull: ['$dual', false] },
                 reserved: { $ifNull: ['$reserved', false] },
                 requiresChairman: { $ifNull: ['$requiresChairman', false] },
+                exchangeable: { $ifNull: ['$exchangeable', true] },
             } }
         ]).toArray()
     }
