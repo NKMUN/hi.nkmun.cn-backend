@@ -437,9 +437,8 @@ const NameCreator = () => {
 }
 
 route.get('/export/committees/photos',
-    AccessFilter('finance', 'admin'),
     async ctx => {
-        if (!ctx.query.token && await AccessFilter('admin', 'root')(ctx)){
+        if (!ctx.query.token && await AccessFilter('finance', 'admin')(ctx)){
             ctx.status = 201
             ctx.set('location', '?token='+sign(
                 { 'export': 1 },
