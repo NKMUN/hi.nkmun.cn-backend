@@ -266,22 +266,18 @@ const LOOKUP_VOLUNTEER = [
 
 const LOOKUP_SCHOOL_SEAT = [
     { $sort: { 'school.name': -1 } },
-    { $match: { rejected: { $ne: true } } },
-    { $lookup: {
-        from: 'school',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'registered'
-    } },
     { $project: {
         name: '$school.name',
-        appSeat: '$seat',
-        school: {$arrayElemAt: ['$registered', 0]}
-    } },
+        r1: '$seat.1',
+        r2: {$ifNull: ['$seat.2', {}]}
+    }}
+]
+
+const LOOKUP_APPLICATION_SEAT = [
+    { $sort: { 'school.name': -1 } },
     { $project: {
-        name: '$name',
-        r1: {$ifNull: ['$school.seat.1', '$appSeat']},
-        r2: {$ifNull: ['$school.seat.2', {}]}
+        name: '$school.name',
+        seat: '$seat'
     }}
 ]
 
@@ -356,16 +352,16 @@ route.get('/export/committees',
 )
 
 route.get('/export/volunteers',
-AccessFilter('finance', 'admin'),
-async ctx => {
-    ctx.status = 200
-    ctx.set('content-type', 'text/csv;charset=utf-8')
-    ctx.body = createCsvStream(
-        ctx.db.collection('volunteer').aggregate(LOOKUP_VOLUNTEER),
-        VOLUNTEER.columns,
-        VOLUNTEER.map
-    )
-}
+    AccessFilter('finance', 'admin'),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('volunteer').aggregate(LOOKUP_VOLUNTEER),
+            VOLUNTEER.columns,
+            VOLUNTEER.map
+        )
+    }
 )
 
 route.get('/export/seats',
@@ -384,6 +380,28 @@ route.get('/export/seats',
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
             ctx.db.collection('school').aggregate(LOOKUP_SCHOOL_SEAT),
+            columns,
+            columnMapper
+        )
+    }
+)
+
+route.get('/export/applications/seats',
+    AccessFilter('finance', 'admin'),
+    async ctx => {
+        const sessions = await ctx.db.collection('session')
+            .find({ reserved: { $ne: true } })
+            .map(({_id, name}) => ({ id: _id, name }))
+            .toArray()
+        const columns = ['学校', ...sessions.map($ => $.name)]
+        const columnMapper = $ => [
+            GV($, 'name'),
+            ...sessions.map(({id}) => GNV($, `seat.${id}`))
+        ]
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('application').aggregate(LOOKUP_APPLICATION_SEAT),
             columns,
             columnMapper
         )
