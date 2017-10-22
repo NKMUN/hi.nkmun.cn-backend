@@ -222,6 +222,17 @@ const createCsvStream = (cursor, columns, map) => {
     return stream
 }
 
+const AGGREGATE_OPTS = {
+    collation: {
+        locale: 'zh'
+    }
+}
+
+const LOOKUP_BILLING = [
+    { $sort: { 'paid_by.school.name': 1 }},
+    { $unwind: '$items' }
+]
+
 const LOOKUP_REPRESENTATIVE = [
     { $lookup: {
         localField: 'school',
@@ -235,8 +246,14 @@ const LOOKUP_REPRESENTATIVE = [
         from: 'session',
         as: 'session',
     } },
+    { $sort: { 'school.school.name': 1 } },
     { $unwind: '$school' },
     { $unwind: '$session' }
+]
+
+const LOOKUP_LEADER = [
+    { $match: { 'is_leader': true } },
+    ... LOOKUP_REPRESENTATIVE
 ]
 
 const LOOKUP_RESERVATION = [
@@ -252,20 +269,21 @@ const LOOKUP_RESERVATION = [
         foreignField: '_id',
         as: 'school'
     } },
+    { $sort: { 'school.school.name': 1 } },
     { $unwind: '$hotel' },
-    { $unwind: '$school' }
+    { $unwind: '$school' },
 ]
 
 const LOOKUP_COMMITTEE = [
-    { $sort: { role: -1, 'contact.name': -1 } }
+    { $sort: { role: 1, 'contact.name': 1 } }
 ]
 
 const LOOKUP_VOLUNTEER = [
-    { $sort: { 'contact.name': -1 } }
+    { $sort: { 'contact.name': 1 } }
 ]
 
 const LOOKUP_SCHOOL_SEAT = [
-    { $sort: { 'school.name': -1 } },
+    { $sort: { 'school.name': 1 } },
     { $project: {
         name: '$school.name',
         r1: '$seat.1',
@@ -274,7 +292,7 @@ const LOOKUP_SCHOOL_SEAT = [
 ]
 
 const LOOKUP_APPLICATION_SEAT = [
-    { $sort: { 'school.name': -1 } },
+    { $sort: { 'school.name': 1 } },
     { $project: {
         name: '$school.name',
         seat: '$seat'
@@ -287,7 +305,7 @@ route.get('/export/representatives',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('representative').aggregate(LOOKUP_REPRESENTATIVE),
+            ctx.db.collection('representative').aggregate(LOOKUP_REPRESENTATIVE, AGGREGATE_OPTS),
             REPRESENTATIVE.columns,
             REPRESENTATIVE.map
         )
@@ -300,10 +318,7 @@ route.get('/export/leaders',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('representative').aggregate([
-                { $match: { 'is_leader': true } },
-                ... LOOKUP_REPRESENTATIVE
-            ]),
+            ctx.db.collection('representative').aggregate(LOOKUP_LEADER, AGGREGATE_OPTS),
             REPRESENTATIVE.columns,
             REPRESENTATIVE.map
         )
@@ -316,9 +331,7 @@ route.get('/export/billings',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('billing').aggregate([
-                { $unwind: '$items' }
-            ]),
+            ctx.db.collection('billing').aggregate(LOOKUP_BILLING, AGGREGATE_OPTS),
             BILLING.columns,
             BILLING.map
         )
@@ -331,7 +344,7 @@ route.get('/export/reservations',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('reservation').aggregate(LOOKUP_RESERVATION),
+            ctx.db.collection('reservation').aggregate(LOOKUP_RESERVATION, AGGREGATE_OPTS),
             RESERVATION.columns,
             RESERVATION.map
         )
@@ -344,7 +357,7 @@ route.get('/export/committees',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE),
+            ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE, AGGREGATE_OPTS),
             COMMITTEE.columns,
             COMMITTEE.map
         )
@@ -357,7 +370,7 @@ route.get('/export/volunteers',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('volunteer').aggregate(LOOKUP_VOLUNTEER),
+            ctx.db.collection('volunteer').aggregate(LOOKUP_VOLUNTEER, AGGREGATE_OPTS),
             VOLUNTEER.columns,
             VOLUNTEER.map
         )
@@ -379,7 +392,7 @@ route.get('/export/seats',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('school').aggregate(LOOKUP_SCHOOL_SEAT),
+            ctx.db.collection('school').aggregate(LOOKUP_SCHOOL_SEAT, AGGREGATE_OPTS),
             columns,
             columnMapper
         )
@@ -401,7 +414,7 @@ route.get('/export/applications/seats',
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
         ctx.body = createCsvStream(
-            ctx.db.collection('application').aggregate(LOOKUP_APPLICATION_SEAT),
+            ctx.db.collection('application').aggregate(LOOKUP_APPLICATION_SEAT, AGGREGATE_OPTS),
             columns,
             columnMapper
         )
