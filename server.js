@@ -12,12 +12,14 @@ module.exports = {
         port = 8081,
         host = undefined,
         db = 'mongodb://localhost:27017/test',
-        secret = require('crypto').randomBytes(32).toString('base64')
+        secret = require('crypto').randomBytes(32).toString('base64'),
+        postie = null
     }) {
         const app = new Koa()
         app.proxy = true
 
-        app.context.JWT_SECRET = secret,
+        app.context.JWT_SECRET = secret
+        app.context.POSTIE = postie
         app.context.db = await require('mongodb').MongoClient.connect( db )
 
         // TODO: inject logging facility
