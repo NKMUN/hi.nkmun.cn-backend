@@ -244,12 +244,12 @@ route.post('/exchanges/:id',
                 { $set: { state: 'accepted' } }
             )
 
-            // check if requests to from/to's from/to session can be satisfied
-            // from, to are fetched before performing exchange
-            // test seat availability using 1
-            if (from.seat['1'][fromSession] === 1)
+            // check if from/to's from/to session reaches 0
+            from = await ctx.db.collection('school').findOne({ _id: fromSchool })
+            to = await ctx.db.collection('school').findOne({ _id: toSchool })
+            if (from.seat['1'][fromSession] === 0)
                 await removeUnavailable(ctx, fromSchool, fromSession)
-            if (to.seat['1'][toSession] === 1)
+            if (to.seat['1'][toSession] === 0)
                 await removeUnavailable(ctx, toSchool, toSession)
 
             let {
