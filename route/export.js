@@ -210,6 +210,31 @@ const VOLUNTEER = {
     ]
 }
 
+const APPLICATION_CONTACT = {
+    columns: [
+        '学校',
+        '联系人1',
+        '性别2',
+        '手机2',
+        '邮箱2',
+        '联系人2',
+        '性别2',
+        '手机2',
+        '邮箱2',
+    ],
+    map: $ => [
+       GV($, 'name'),
+       GV($, 'contact.name'),
+       genderText( GV($, 'contact.gender') ),
+       GV($, 'contact.phone'),
+       GV($, 'contact.email'),
+       GV($, 'altContact.name'),
+       genderText( GV($, 'altContact.gender') ),
+       GV($, 'altContact.phone'),
+       GV($, 'altContact.email'),
+    ]
+}
+
 const createCsvStream = (cursor, columns, map) => {
     const stream = new CsvStringify()
     stream.write(columns)
@@ -296,6 +321,15 @@ const LOOKUP_APPLICATION_SEAT = [
     { $project: {
         name: '$school.name',
         seat: '$seat'
+    }}
+]
+
+const LOOKUP_APPLICATION_CONTACT = [
+    { $sort: { 'school.name': 1 } },
+    { $project: {
+        name: '$school.name',
+        contact: '$contact',
+        altContact: '$altContact'
     }}
 ]
 
@@ -417,6 +451,19 @@ route.get('/export/applications/seats',
             ctx.db.collection('application').aggregate(LOOKUP_APPLICATION_SEAT, AGGREGATE_OPTS),
             columns,
             columnMapper
+        )
+    }
+)
+
+route.get('/export/applications/contacts',
+    AccessFilter('finance', 'admin'),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('application').aggregate(LOOKUP_APPLICATION_CONTACT, AGGREGATE_OPTS),
+            APPLICATION_CONTACT.columns,
+            APPLICATION_CONTACT.map
         )
     }
 )
