@@ -29,7 +29,7 @@ route.post('/invitations/',
             used: false
         })
 
-        let {nickname, account, invitation} = ctx.mailConfig
+        let { invitation } = ctx.mailConfig
         let mailHtml = String(invitation).replace(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g, (m, key) => {
             switch (key) {
                 case 'school': return application.school.name
@@ -39,32 +39,27 @@ route.post('/invitations/',
             }
         })
 
-        try {
-            let smtpResult = await ctx.mailer.sendMail({
-                from: { name: nickname, address: account },
-                to: application.contact.email,
-                subject: '汇文国际中学生模拟联合国大会名额名额分配结果',
-                html: mailHtml
-            })
-            ctx.log.smtp = smtpResult
+        const {
+            success,
+            error,
+            transportResponse
+        } = await ctx.mailer.sendMail({
+            to: application.contact.email,
+            subject: '汇文国际中学生模拟联合国大会名额名额分配结果',
+            html: mailHtml
+        })
 
-            if (parseInt(smtpResult.response) === 250) {
-                await ctx.db.collection('application').updateOne(
-                    { _id: school },
-                    { $set: { processed: true } }
-                )
-                ctx.status = 200
-                ctx.body   = { message: smtpResult.response }
-            } else {
-                ctx.status = 429
-                ctx.body   = { message: smtpResult.response }
-            }
-        }catch(e){
+        if (success) {
+            await ctx.db.collection('application').updateOne(
+                { _id: school },
+                { $set: { processed: true } }
+            )
+            ctx.status = 200
+            ctx.body = { message: 'mail scheduled' }
+        } else {
             ctx.status = 503
-            ctx.body = { error: e.message }
-            throw e
+            ctx.body = { message: (error ? error.toString() : '') + ', ' + (transportResponse || '') }
         }
-
     }
 )
 

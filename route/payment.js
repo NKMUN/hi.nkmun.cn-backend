@@ -136,30 +136,27 @@ route.patch('/schools/:id/payments/',
                     default:       return ''
                 }
             })
-            try {
-                let smtpResult = await ctx.mailer.sendMail({
-                    from: { name: nickname, address: account },
-                    to: ctx.school.leader.email,
-                    subject: '汇文国际中学生模拟联合国大会缴费审核结果',
-                    html: mailHtml
-                })
-                ctx.log.smtp = smtpResult
 
-                if (parseInt(smtpResult.response) === 250) {
-                    ctx.status = 200
-                    ctx.body   = { message: smtpResult.response }
-                } else {
-                    ctx.status = 202
-                    ctx.body   = { message: smtpResult.response }
-                }
-            } catch(e) {
+            const {
+                success,
+                error,
+                transportResponse
+            } = await ctx.mailer.sendMail({
+                to: ctx.school.leader.email,
+                subject: '汇文国际中学生模拟联合国大会缴费审核结果',
+                html: mailHtml
+            })
+    
+            if (success) {
+                ctx.status = 200
+                ctx.body = { message: 'mail scheduled' }
+            } else {
                 ctx.status = 202
-                ctx.body = { message: e.message }
-                throw e
+                ctx.body = { message: 'mail not scheduled: ' + (error ? error.toString() : '') + ', ' + (transportResponse || '') }
             }
         } else {
             ctx.status = 202
-            ctx.body = { message: 'Mail not configured' }
+            ctx.body = { message: 'mail not configured' }
         }
     }
 )

@@ -8,6 +8,7 @@ program
   .option('-h, --host <addr>', 'Host address to bind, default: all', String)
   .option('--db, <connStr>',   'Database, default: mongodb://localhost:27017/nkmun', String)
   .option('-s, --secret <secret>', 'Secret used to sign/verify JWT', String)
+  .option('--postie <url>', 'Postie endpoint', String)
   .parse(process.argv)
 
 // server startup params
@@ -15,10 +16,11 @@ let {
     port = 8001,
     host = undefined,
     db = 'mongodb://localhost:27017/nkmun',
-    secret = 'secret'
+    secret = 'secret',
+    postie = null
 } = program
 
-require('../server').create({ host, port, db, secret })
+require('../server').create({ host, port, db, secret, postie })
 .catch( e => {
     console.error(e.message)
     console.error(e.stack)
