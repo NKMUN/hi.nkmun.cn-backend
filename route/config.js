@@ -65,7 +65,7 @@ route.post('/config/mail',
                 } = await ctx.mailer.sendMail({
                     to: args,
                     subject: 'Hi.NKMUN Email Delivery Test',
-                    html: `This is a test email to: ${args}`
+                    html: `This is a test email to ${args} via ${ctx.mailer.name}`
                 })
 
                 if (success) {
