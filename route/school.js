@@ -327,6 +327,7 @@ route.delete('/schools/:id',
         await ctx.db.collection('exchange').deleteMany({ 'to.school': { $eq: id } })
         await ctx.db.collection('invitation').deleteMany({ school: { $eq: id } })
         await ctx.db.collection('representative').deleteMany({ school: { $eq: id } })
+        await ctx.db.collection('user').deleteMany({ school: {$eq: id}, reserved: {$ne: true} })
 
         // restore reservations
         let reservations = await ctx.db.collection('reservation').find({ school: { $eq: id } }).toArray()
