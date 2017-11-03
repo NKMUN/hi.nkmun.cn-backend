@@ -71,8 +71,8 @@ route.get('/invitations/',
         ctx.status = 200
         ctx.body = {
             school: schoolId,
-            invitation: invitation.invitation,
-            used: invitation.used
+            invitation: invitation ? invitation.invitation : null,
+            used: invitation ? invitation.used : null
         }
     }
 );
