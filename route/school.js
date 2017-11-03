@@ -211,28 +211,13 @@ route.post('/schools/:id/seat',
 
         // confirmRelinquish
         if (confirmRelinquish) {
-            // NOTE: may be consistency issue with leaderAttend flag
-            //       double check it!
-            const school = await ctx.db.collection('school').findOne({
-                _id: ctx.school._id,
-                'seat.1._leader_r': { $exists: false },
-                'seat.1._leader_nr': { $exists: false }
-            })
-            if (school === null) {
-                // school is ok, proceed to exchange
-                let {
-                    matchedCount
-                } = await ctx.db.collection('school').updateOne(
-                    { _id: ctx.school._id, stage: '1.relinquishment' },
-                    { $set: { stage: '1.exchange' } }
-                )
-                processed = matchedCount === 1
-            } else {
-                ctx.status = 503
-                ctx.set('retry-after', 1)
-                ctx.body = { message: 'retry', error: 'retry' }
-                return
-            }
+            let {
+                matchedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id, stage: '1.relinquishment' },
+                { $set: { stage: '1.exchange' } }
+            )
+            processed = matchedCount === 1
         }
 
         // confirmExchange
