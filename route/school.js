@@ -96,6 +96,8 @@ route.patch('/schools/:id',
             return
         }
 
+        const payload = getPayload(ctx)
+
         if ( field.startsWith('seat.') ) {
             let stage = ctx.school.stage
             if ( field[5] === stage[0]    // modifies current round
@@ -105,11 +107,21 @@ route.patch('/schools/:id',
                 ctx.body = { error: 'incorrect stage to make modify seats' }
                 return
             }
+
+            let updateSetArgs = {}
+            if (typeof payload === 'object') {
+                // merge seat fields, otherwise leader attendance seat will be overwritten
+                for (let key in payload)
+                    updateSetArgs[`${field}.${key}`] = payload[key]
+            } else {
+                updateSetArgs = payload
+            }
+
             let {
                 matchedCount
             } = await ctx.db.collection('school').updateOne(
                 { _id: ctx.school._id },
-                { $set: { [field]: ctx.request.body } }
+                { $set: updateSetArgs }
             )
             if (matchedCount === 0) {
                 ctx.status = 412
@@ -181,19 +193,19 @@ route.post('/schools/:id/seat',
                 ctx.body = { error: 'invalid stage' }
                 return
             }
-            if (leaderAttend) {
-                await ctx.db.collection('school').updateOne(
-                    { _id: ctx.school._id },
-                    { $set: { 'seat.1._leader_r': 1 },
-                      $unset: { 'seat.1._leader_nr': '' } }
-                )
-            } else {
-                await ctx.db.collection('school').updateOne(
-                    { _id: ctx.school._id },
-                    { $set: { 'seat.1._leader_nr': 1 },
-                      $unset: { 'seat.1._leader_r': '' } }
-                )
-            }
+            const updateQuery = leaderAttend
+                ? { $set: { 'seat.1._leader_r': 1 },
+                    $unset: { 'seat.1._leader_nr': '' } }
+                : { $set: { 'seat.1._leader_nr': 1 },
+                    $unset: { 'seat.1._leader_r': '' } }
+            const {
+                matchedCount,
+                modifiedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id },
+                updateQuery
+            )
+            console.error(`leader-attend result: ${matchedCount} ${modifiedCount}`)
             processed = true
         }
 
