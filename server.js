@@ -53,6 +53,7 @@ module.exports = {
         app.use( require('./route/images').routes )
         app.use( require('./route/committee').routes )
         app.use( require('./route/volunteer').routes )
+        app.use( require('./route/dais').routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {
