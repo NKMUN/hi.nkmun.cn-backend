@@ -11,7 +11,7 @@ program
   .option('-a, --admin', 'Admin access')
   .option('-s, --staff', 'Staff access')
   .option('-f, --finance', 'Finance access')
-  .option('-s, --school <schoolId>', 'School Leader access', String)
+  .option('-l, --leader <schoolId>', 'School Leader access', String)
   .option('-p, --password', 'Prompt for password')
   .option('-r, --reserved',   'Set as reserved user')
   .option('-R, --unreserved', 'Unset as reserved user')
@@ -26,7 +26,7 @@ let {
     admin = false,
     staff = false,
     finance = false,
-    school = false,
+    leader = false,
     password = false,
     reserved = false,
     unreserved = false,
@@ -51,11 +51,11 @@ if (!userId) {
         access.push('staff')
     if (finance)
         access.push('finance')
-    if (school)
-        access.push('school')
+    if (leader)
+        access.push('leader')
     if (access.length > 0) {
         user.access = access
-        user.school = school ? school : null
+        user.school = leader ? leader : null
     }
 
     // reserved flag
