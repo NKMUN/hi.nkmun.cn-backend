@@ -29,7 +29,8 @@ route.post('/login',
         let cred = {
             user: storedCred._id,
             access: storedCred.access || [],
-            school: storedCred.school || null
+            school: storedCred.school || null,
+            session: storedCred.session || null
         }
 
         // surpass payload that contains password
