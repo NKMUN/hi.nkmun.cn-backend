@@ -259,8 +259,11 @@ route.post('/schools/:id/seat',
 
         // startConfirm
         if (startConfirm) {
-            if ( ! await AccessFilter('admin')(ctx) )
+            if ( !ctx.hasAccessTo('staff') ) {
+                ctx.status = 403
+                ctx.body = { error: 'forbidden' }
                 return
+            }
             let {
                 matchedCount
             } = await ctx.db.collection('school').updateOne(
