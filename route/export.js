@@ -232,6 +232,51 @@ const VOLUNTEER = {
     ]
 }
 
+const DAIS = {
+    columns: [
+        '职能',
+        '学校',
+        '姓名',
+        '性别',
+        '手机',
+        '邮箱',
+        'QQ',
+        '证件类型',
+        '证件号码',
+        '紧急联系人关系',
+        '紧急联系人姓名',
+        '紧急联系人手机',
+        '紧急联系人证件类型',
+        '紧急联系人证件号码',
+        '来宁日期',
+        '离宁日期',
+        '酒店入住日期',
+        '酒店退房日期',
+        '备注'
+    ],
+    map: $ => [
+       GV($, 'role'),
+       GV($, 'school'),
+       GV($, 'contact.name'),
+       genderText( GV($, 'contact.gender') ),
+       GV($, 'contact.phone'),
+       GV($, 'contact.email'),
+       GV($, 'contact.qq'),
+       idTypeText( GV($, 'identification.type') ),
+       GV($, 'identification.number'),
+       guardianTypeText( GV($, 'guardian.type') ),
+       GV($, 'guardian.name'),
+       GV($, 'guardian.phone'),
+       idTypeText( GV($, 'guardian_identification.type') ),
+       GV($, 'guardian_identification.number'),
+       GV($, 'arriveDate'),
+       GV($, 'departDate'),
+       GV($, 'checkInDate'),
+       GV($, 'checkOutDate'),
+       GV($, 'comment')
+    ]
+}
+
 const APPLICATION_CONTACT = {
     columns: [
         '学校',
@@ -335,6 +380,10 @@ const LOOKUP_VOLUNTEER = [
     { $sort: { 'contact.name': 1 } }
 ]
 
+const LOOKUP_DAIS = [
+    { $sort: { 'contact.name': 1 } }
+]
+
 const LOOKUP_SCHOOL_SEAT = [
     { $sort: { 'school.name': 1 } },
     { $project: {
@@ -435,6 +484,19 @@ route.get('/export/volunteers',
             ctx.db.collection('volunteer').aggregate(LOOKUP_VOLUNTEER, AGGREGATE_OPTS),
             VOLUNTEER.columns,
             VOLUNTEER.map
+        )
+    }
+)
+
+route.get('/export/daises',
+    AccessFilter('finance', 'admin'),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('dais').aggregate(LOOKUP_DAIS, AGGREGATE_OPTS),
+            DAIS.columns,
+            DAIS.map
         )
     }
 )
