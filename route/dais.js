@@ -13,13 +13,14 @@ route.post('/daises/',
         } = await ctx.db.collection('dais').insertOne(
             Object.assign(
                 {
+                    _id: newId(),
                     login: Object.assign(
                         { user: payload.contact.email },
                         require('../lib/password').derive(payload.password)
                     )
                 },
                 getPayload(ctx),
-                { password: undefined, created_at: new Date()}
+                { password: undefined, created_at: new Date() }
             )
         )
 
@@ -33,7 +34,7 @@ route.post('/daises/',
 route.get('/daises/',
     AccessFilter('admin'),
     async ctx => {
-        const daises = await ctx.db.collection('dais').find({ user: false }).toArray()
+        const daises = await ctx.db.collection('dais').find({}, { user: false }).toArray()
         ctx.status = 200
         ctx.body = daises.map(toId)
     }
@@ -48,14 +49,16 @@ route.post('/daises/:id',
         } = getPayload(ctx)
         
         if (activate) {
-            const {
-                login,
-                session
-            } = await ctx.db.collection('dais').findOne({ _id: ctx.params.id })
+            const dais = await ctx.db.collection('dais').findOne({ _id: ctx.params.id })
             if (!dais) {
                 ctx.status = 404
                 ctx.body = { error: 'not found' }
+                return
             }
+            const {
+                login,
+                session
+            } = dais
             try {
                 await ctx.db.collection('user').insertOne(
                     Object.assign(

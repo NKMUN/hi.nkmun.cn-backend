@@ -54,14 +54,23 @@ route.get('/users/',
                 foreignField: '_id',
                 from: 'school',
                 as: 'school'
+            } },
+            { $lookup: {
+                localField: 'session',
+                foreignField: '_id',
+                from: 'session',
+                as: 'session'
             } }
         ]).map( $ => ({
             id: $._id,
             reserved: $.reserved,
             access: $.access,
             school: $.school && $.school.length > 0
-                  ? { id: $.school[0]._id, name: $.school[0].school.name }
-                  : null
+                ? { id: $.school[0]._id, name: $.school[0].school.name }
+                : null,
+            session: $.session && $.session.length > 0
+                ? { id: $.session[0]._id, name: $.session[0].name }
+                : null
         }) ).toArray()
     }
 )
