@@ -329,6 +329,19 @@ route.delete('/schools/:id',
     LogOp('school', 'nuke'),
     async ctx => {
         let id = ctx.school._id
+
+        // check for roomshares, if present, refuse to nuke
+        const roomshares = await ctx.db.collection('reservation').find({ school: id, 'roomshare.state': 'accepted' }).toArray()
+        if (roomshares.length > 0) {
+            ctx.status = 412
+            ctx.body = {
+                error: 'school has accepted roomshares',
+                cause: 'roomshare',
+                roomshareWith: roomshares.map($ => $.roomshare.school)
+            }
+            return
+        }
+
         await ctx.db.collection('school').updateOne(
             { _id: { $eq: id } },
             { $set: { stage: 'x.nuking' } }
@@ -340,6 +353,12 @@ route.delete('/schools/:id',
         await ctx.db.collection('invitation').deleteMany({ school: { $eq: id } })
         await ctx.db.collection('representative').deleteMany({ school: { $eq: id } })
         await ctx.db.collection('user').deleteMany({ school: {$eq: id}, reserved: {$ne: true} })
+
+        // flag accepted roomshares, should notify roomshare initiators
+        await ctx.db.collection('reservation').updateMany(
+            { 'roomshare.school': id },
+            { $set: { 'roomshare.state': 'peer-withdraw' } }
+        )
 
         // restore reservations
         let reservations = await ctx.db.collection('reservation').find({ school: { $eq: id } }).toArray()
@@ -370,7 +389,7 @@ route.post('/schools/:id/progress',
             const roomshares = await ctx.db.collection('reservation').find({ 'roomshare.school': ctx.params.id }).toArray()
             // all roomshare must be null or accepted
             const reservationsResolved = reservations.every(({roomshare}) => 
-                roomshare === null || roomshare.state === 'accepted'
+                roomshare === null || roomshare.state === 'accepted' || roomshare.state === 'peer-withdraw'
             )
             const roomsharesResolved = roomshares.every(({roomshare: {state}}) =>
                 state === 'accepted' || state === 'rejected'

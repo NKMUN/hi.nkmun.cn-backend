@@ -52,6 +52,24 @@ const guardianTypeText = val => {
     }
 }
 
+const roomshareState = val => {
+    const roomshareStateText = val => {
+        switch (val) {
+            case 'pending': return '待确认'
+            case 'accepted': return '已确认'
+            case 'rejected': return '已拒绝'
+            case 'peer-withdraw': return '对方学校已退会'
+        }
+    }
+    if (val.roomshare) {
+        const roomshareSchoolName = val.roomshareSchool[0] ? val.roomshareSchool[0].school.name : ''
+        const roomshareConclusion = val.roomshare.state === 'accepted' ? '是' : ''
+        return [roomshareConclusion, roomshareSchoolName, roomshareStateText(val.roomshare.state)]
+    } else {
+        return ['', '', '']
+    }
+}
+
 const REPRESENTATIVE = {
     columns: [
         '领队标记',
@@ -112,6 +130,9 @@ const RESERVATION = {
         '房型',
         '入住日期',
         '退房日期',
+        '拼房',
+        '拼房学校',
+        '拼房状态'
     ],
     map: $ => [
         GV($, 'school.school.name'),
@@ -119,6 +140,7 @@ const RESERVATION = {
         GV($, 'hotel.type'),
         GV($, 'checkIn'),
         GV($, 'checkOut'),
+        ... roomshareState($)
     ]
 }
 
@@ -293,6 +315,12 @@ const LOOKUP_RESERVATION = [
         localField: 'school',
         foreignField: '_id',
         as: 'school'
+    } },
+    { $lookup: {
+        from: 'school',
+        localField: 'roomshare.school',
+        foreignField: '_id',
+        as: 'roomshareSchool'
     } },
     { $sort: { 'school.school.name': 1 } },
     { $unwind: '$hotel' },
