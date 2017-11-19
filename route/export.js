@@ -89,6 +89,7 @@ const REPRESENTATIVE = {
         '监护人证件类型',
         '监护人证件号码',
         '备注',
+        '席位'
     ],
     map: $ => [
        isLeaderText( GV($, 'is_leader') ),
@@ -107,7 +108,8 @@ const REPRESENTATIVE = {
        GV($, 'guardian.phone'),
        idTypeText( GV($, 'guardian_identification.type') ),
        GV($, 'guardian_identification.number'),
-       GV($, 'comment')
+       GV($, 'comment'),
+       GV($, 'note')
     ]
 }
 
