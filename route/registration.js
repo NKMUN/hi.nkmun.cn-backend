@@ -24,6 +24,7 @@ route.post('/registration',
 
         let user = Object.assign(
             {
+                _id: login.user,
                 user: login.user,
                 access: ['leader'],
                 school: schoolId,
@@ -42,12 +43,7 @@ route.post('/registration',
         )
 
         try {
-            await db.collection('user').updateOne(
-                { _id: login.user },
-                { $set: user,
-                  $currentDate: { lastModified: true } },
-                { upsert: true }
-            )
+            await db.collection('user').insert(user)
             await db.collection('school').insert({
                 _id: schoolId,
                 school: school,
