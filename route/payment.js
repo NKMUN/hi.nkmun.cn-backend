@@ -89,13 +89,6 @@ route.patch('/schools/:id/payments/',
 
         if (confirm) {
             await LogOp('payment', 'confirm')(ctx)
-            await ctx.db.collection('billing').insertOne({
-                id: newId(),
-                school: ctx.params.id,
-                created: new Date(),
-                paid_by: ctx.school,
-                items: await getBillingDetail(ctx, ctx.params.id, ctx.school.stage[0]),
-             })
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.params.id },
                 { $set: { stage: `${ctx.school.stage[0]}.complete`} }

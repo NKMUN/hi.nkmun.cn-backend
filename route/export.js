@@ -5,6 +5,7 @@ const CsvStringify = require('csv-stringify')
 const Archiver = require('archiver')
 const { PassThrough } = require('stream')
 const { verify, sign } = require('jsonwebtoken')
+const { getBillingDetail } = require('./billing')
 
 const GV = (obj, key) => {
     let keys = key.split('.')
@@ -113,15 +114,17 @@ const REPRESENTATIVE = {
     ]
 }
 
+const flattenArray = (a, b) => [...a, ...b]
+
 const BILLING = {
     columns: [ '学校', '类别', '项目', '数量/天数', '单价', '总价' ],
     map: $ => [
-        GV($, 'paid_by.school.name'),
-        GV($, 'items.type'),
-        GV($, 'items.name'),
-        GV($, 'items.amount'),
-        GV($, 'items.price'),
-        GV($, 'items.sum'),
+        GV($, 'school'),
+        GV($, 'type'),
+        GV($, 'name'),
+        GV($, 'amount'),
+        GV($, 'price'),
+        GV($, 'sum'),
     ]
 }
 
@@ -304,14 +307,23 @@ const APPLICATION_CONTACT = {
     ]
 }
 
-const createCsvStream = (cursor, columns, map) => {
+const createCsvStream = (cursor, columns, map, flatten = false) => {
     const stream = new CsvStringify()
     stream.write(columns)
-    cursor.each( (err, $) => {
-        if ($)
-            stream.write( map($) )
-        else
+    setImmediate(async () => {
+        try {
+            while (await cursor.hasNext()) {
+                const mapped = await map(await cursor.next())
+                if (flatten)
+                    mapped.forEach($ => stream.write($))
+                else
+                    stream.write(mapped)
+            }
+        } catch(e) {
+            stream.write(['ERROR', e.message])
+        } finally {
             stream.end()
+        }
     })
     return stream
 }
@@ -322,9 +334,8 @@ const AGGREGATE_OPTS = {
     }
 }
 
-const LOOKUP_BILLING = [
-    { $sort: { 'paid_by.school.name': 1 }},
-    { $unwind: '$items' }
+const LOOKUP_SCHOOL_BILLING = [
+    { $sort: { 'school.name': 1 }}
 ]
 
 const LOOKUP_REPRESENTATIVE = [
@@ -443,10 +454,20 @@ route.get('/export/billings',
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
+        // compute billing details for every school on export
         ctx.body = createCsvStream(
-            ctx.db.collection('billing').aggregate(LOOKUP_BILLING, AGGREGATE_OPTS),
+            ctx.db.collection('school').aggregate(LOOKUP_SCHOOL_BILLING, AGGREGATE_OPTS),
             BILLING.columns,
-            BILLING.map
+            school => Promise.all(
+                ['1', '2', '3'].map(round => getBillingDetail(ctx, school._id, round))
+            ).then(
+                (...results) => results
+                    .reduce(flattenArray)   // merge promise results
+                    .reduce(flattenArray)   // flatten billing items
+                    .map($ => Object.assign($, { school: school.school.name }))  // merge school name
+                    .map(BILLING.map)  // use legacy mapper
+            ),
+            true  // flatten mapped result
         )
     }
 )
