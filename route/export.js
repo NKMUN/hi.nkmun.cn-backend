@@ -1,10 +1,9 @@
 const Router = require('koa-router')
 const route = new Router()
-const { AccessFilter } = require('./auth')
+const { AccessFilter, TokenAccessFilter } = require('./auth')
 const CsvStringify = require('csv-stringify')
 const Archiver = require('archiver')
 const { PassThrough } = require('stream')
-const { verify, sign } = require('jsonwebtoken')
 const { getBillingDetail } = require('./billing')
 
 const GV = (obj, key) => {
@@ -424,7 +423,7 @@ const LOOKUP_APPLICATION_CONTACT = [
 ]
 
 route.get('/export/representatives',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -437,7 +436,7 @@ route.get('/export/representatives',
 )
 
 route.get('/export/leaders',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -450,7 +449,7 @@ route.get('/export/leaders',
 )
 
 route.get('/export/billings',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -473,7 +472,7 @@ route.get('/export/billings',
 )
 
 route.get('/export/reservations',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -486,7 +485,7 @@ route.get('/export/reservations',
 )
 
 route.get('/export/committees',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -499,7 +498,7 @@ route.get('/export/committees',
 )
 
 route.get('/export/volunteers',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -512,7 +511,7 @@ route.get('/export/volunteers',
 )
 
 route.get('/export/daises',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -525,7 +524,7 @@ route.get('/export/daises',
 )
 
 route.get('/export/seats',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         const sessions = await ctx.db.collection('session')
             .find({ reserved: { $ne: true } })
@@ -547,7 +546,7 @@ route.get('/export/seats',
 )
 
 route.get('/export/applications/seats',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         const sessions = await ctx.db.collection('session')
             .find({ reserved: { $ne: true } })
@@ -569,7 +568,7 @@ route.get('/export/applications/seats',
 )
 
 route.get('/export/applications/contacts',
-    AccessFilter('finance', 'admin'),
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -597,39 +596,22 @@ const NameCreator = () => {
 }
 
 route.get('/export/committees/photos',
+    TokenAccessFilter('finance', 'admin'),
     async ctx => {
-        if (!ctx.query.token && await AccessFilter('finance', 'admin')(ctx)){
-            ctx.status = 201
-            ctx.set('location', '?token='+sign(
-                { 'export': 1 },
-                ctx.JWT_SECRET,
-                { expiresIn: '1 min' }
-            ))
-            ctx.body = ''
-        } else {
-            // verify token
-            try {
-                verify(ctx.query.token, ctx.JWT_SECRET)
-            } catch(e) {
-                ctx.status = 403
-                ctx.body = { error: 'not authorized' }
-                return
-            }
-            ctx.status = 200
-            ctx.set('content-type', 'application/zip;charset=utf-8')
-            let archiver = Archiver('zip', {store: true})
-            ctx.body = archiver.pipe(new PassThrough())
-            const committees = await ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE).toArray()
-            const createName = NameCreator()
-            for (let committee of committees) {
-                const prefix = GV(committee, 'role') + '-' + GV(committee, 'contact.name')
-                const name = createName(prefix) + '.jpg'
-                const photo = await ctx.db.collection('image').findOne({ _id: committee.photoId })
-                if (photo)
-                    archiver.append(photo.buffer.buffer, { name, date: photo.created })
-            }
-            archiver.finalize()
+        ctx.status = 200
+        ctx.set('content-type', 'application/zip;charset=utf-8')
+        let archiver = Archiver('zip', {store: true})
+        ctx.body = archiver.pipe(new PassThrough())
+        const committees = await ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE).toArray()
+        const createName = NameCreator()
+        for (let committee of committees) {
+            const prefix = GV(committee, 'role') + '-' + GV(committee, 'contact.name')
+            const name = createName(prefix) + '.jpg'
+            const photo = await ctx.db.collection('image').findOne({ _id: committee.photoId })
+            if (photo)
+                archiver.append(photo.buffer.buffer, { name, date: photo.created })
         }
+        archiver.finalize()
     }
 )
 

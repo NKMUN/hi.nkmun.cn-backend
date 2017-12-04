@@ -1,4 +1,4 @@
-const {verify} = require('jsonwebtoken')
+const {verify, sign} = require('jsonwebtoken')
 const AUTHORIZATION_PREFIX = 'Bearer '
 const curry = require('curry')
 
@@ -59,7 +59,33 @@ function createAccessFilter(...requiredAccesses) {
     }
 }
 
+function createTokenAccessFilter(...requiredAccess) {
+    return async (ctx, next) => {
+        if (!ctx.query.token && await createAccessFilter(...requiredAccess)(ctx)){
+            // no token, issue one
+            ctx.status = 201
+            ctx.set('location', '?token='+sign(
+                { 'export': 1 },
+                ctx.JWT_SECRET,
+                { expiresIn: '1 min' }
+            ))
+            ctx.body = ''
+        } else {
+            // verify token
+            try {
+                verify(ctx.query.token, ctx.JWT_SECRET)
+            } catch(e) {
+                ctx.status = 403
+                ctx.body = { error: 'not authorized' }
+                return
+            }
+            await next()
+        }
+    }
+}
+
 module.exports = {
     TokenParser,
-    AccessFilter: createAccessFilter
+    AccessFilter: createAccessFilter,
+    TokenAccessFilter: createTokenAccessFilter
 }
