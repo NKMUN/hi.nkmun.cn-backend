@@ -121,8 +121,10 @@ route.patch('/schools/:id/representatives/:rid',
         delete payload.school
         delete payload.round
         // certain fields can only be updated by admin
-        if ( ! ctx.hasAccessTo('staff.representative') ) {
+        if ( !ctx.hasAccessTo('staff.representative') ) {
             delete payload.session
+        }
+        if ( !ctx.hasAccessTo('staff.representative') && !ctx.hasAccessTo('leader') ) {
             delete payload.withdraw
         }
         let {
