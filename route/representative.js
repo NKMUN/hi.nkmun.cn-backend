@@ -88,7 +88,8 @@ route.get('/schools/:id/representatives/',
                 school: {
                     id: '$school._id',
                     name: '$school.school.name'
-                }
+                },
+                comment: '$comment'
             } }
         ]).toArray()
     }
