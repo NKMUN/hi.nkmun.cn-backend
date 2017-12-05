@@ -42,6 +42,7 @@ const makeRepresentativeEntry = (representative, session, school) => {
         is_leader: representative.is_leader,
         withdraw: representative.withdraw,
         note: representative.note,
+        comment: representative.comment,
         session: {
             id: session._id,
             name: session.name
