@@ -393,7 +393,7 @@ const LOOKUP_VOLUNTEER = [
 ]
 
 const LOOKUP_DAIS = [
-    { $sort: { 'contact.name': 1 } }
+    { $sort: { role: 1, 'contact.name': 1 } }
 ]
 
 const LOOKUP_SCHOOL_SEAT = [
@@ -608,6 +608,26 @@ route.get('/export/committees/photos',
             const prefix = GV(committee, 'role') + '-' + GV(committee, 'contact.name')
             const name = createName(prefix) + '.jpg'
             const photo = await ctx.db.collection('image').findOne({ _id: committee.photoId })
+            if (photo)
+                archiver.append(photo.buffer.buffer, { name, date: photo.created })
+        }
+        archiver.finalize()
+    }
+)
+
+route.get('/export/daises/photos',
+    TokenAccessFilter('finance', 'admin'),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'application/zip;charset=utf-8')
+        let archiver = Archiver('zip', {store: true})
+        ctx.body = archiver.pipe(new PassThrough())
+        const daises = await ctx.db.collection('dais').aggregate(LOOKUP_DAIS).toArray()
+        const createName = NameCreator()
+        for (let dais of daises) {
+            const prefix = GV(dais, 'role') + '-' + GV(dais, 'contact.name')
+            const name = createName(prefix) + '.jpg'
+            const photo = await ctx.db.collection('image').findOne({ _id: dais.photoId })
             if (photo)
                 archiver.append(photo.buffer.buffer, { name, date: photo.created })
         }
