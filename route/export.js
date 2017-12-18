@@ -393,6 +393,7 @@ const LOOKUP_VOLUNTEER = [
 ]
 
 const LOOKUP_DAIS = [
+    { $match: { state: 'activated' } },
     { $sort: { role: 1, 'contact.name': 1 } }
 ]
 
