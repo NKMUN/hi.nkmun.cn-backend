@@ -195,7 +195,6 @@ route.get('/schools/:id/payments/:pid',
             ctx.set('Content-Type', payment.mime)
             ctx.set('X-Created-Date', new Date(payment.created).toISOString())
             ctx.body = payment.buffer.buffer    // payment.buffer is Mongodb.Binary
-            ctx.status = 200
         } else {
             ctx.status = 404
             ctx.body = { error: 'not found' }
