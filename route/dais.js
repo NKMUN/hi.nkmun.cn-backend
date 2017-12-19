@@ -34,7 +34,7 @@ route.post('/daises/',
 route.get('/daises/',
     AccessFilter('admin'),
     async ctx => {
-        const daises = await ctx.db.collection('dais').find({}, { user: false }).toArray()
+        const daises = await ctx.db.collection('dais').find({}, { login: false }).toArray()
         ctx.status = 200
         ctx.body = daises.map(toId)
     }
@@ -96,9 +96,79 @@ route.post('/daises/:id',
 
         if (ctx.status === 200) {
             ctx.body = toId(
-                await ctx.db.collection('dais').findOne({ _id: ctx.params.id }, { user: false })
+                await ctx.db.collection('dais').findOne({ _id: ctx.params.id }, { login: false })
             )
         }
+    }
+)
+
+const Dais = async (ctx, next) => {
+    // dais can only get themself
+    if (ctx.hasAccessTo('dais')) {
+        if (ctx.params.id !== '~') {
+            ctx.status = 403
+            ctx.body = { error: 'forbidden' }
+            return
+        }
+    }
+
+    const dais = await ctx.db.collection('dais').findOne(
+      ctx.params.id === '~'
+        ? { state: 'activated', 'login.user': ctx.token.user }
+        : { _id: ctx.params.id },
+      { 'login.hash': false, 'login.salt': false, 'login.iter': false }
+    )
+    if (!dais) {
+        ctx.status = 404
+        ctx.body = { error: 'not found' }
+        return
+    }
+
+    ctx.dais = dais
+    if (next) await next()
+}
+
+const Route_GetDaisById = async ctx => {
+    await Dais(ctx),
+    ctx.status = 200
+    ctx.body = toId(ctx.dais)
+}
+
+route.get('/daises/:id',
+    AccessFilter('dais', 'admin', 'finance'),
+    Route_GetDaisById
+)
+
+route.patch('/daises/:id',
+    AccessFilter('dais', 'admin', 'finance'),
+    Dais,
+    async ctx => {
+        const payload = getPayload(ctx)
+        const PERMITTED_FIELDS = [
+            'photoId',
+            'identification',
+            'guardian',
+            'guardian_identification',
+            'comment',
+            'arriveDate',
+            'departDate',
+            'checkInDate',
+            'checkOutDate'
+        ]
+        for (let key in payload) {
+            if (!PERMITTED_FIELDS.includes(key)) {
+                ctx.status = 400
+                ctx.body = { error: 'not permitted', message: `can not update field: ${key}` }
+                return
+            }
+        }
+
+        await ctx.db.collection('dais').updateOne(
+            { _id: ctx.dais._id },
+            { $set: payload }
+        )
+
+        await Route_GetDaisById(ctx)
     }
 )
 
