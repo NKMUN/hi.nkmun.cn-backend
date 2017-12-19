@@ -42,6 +42,8 @@ route.post('/images/',
 )
 
 const SIZE_MAP = {
+    tiny: 160,
+    mini: 240,
     small: 480,
     medium: 720,
     large: 1280,
