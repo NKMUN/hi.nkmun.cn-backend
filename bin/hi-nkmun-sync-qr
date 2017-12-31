@@ -1,0 +1,147 @@
+#!/usr/bin/env node
+
+const program = require('commander')
+
+program
+  .version('0.1.0')
+  .option('-o, --org', 'Organization, default: nkmun', String)
+  .option('-d, --db, <connStr>',  'Database, default: mongodb://localhost:27017/nkmun', String)
+  .option('-f, --force', 'Forcibly Re-sync')
+  .option('-s, --server', 'QR Server Endpoint, default: http://localhost:8005')
+  .option('-i, --api-identity', 'API identity')
+  .option('-k, --api-key', 'API key')
+  .parse(process.argv)
+
+let {
+  db = 'mongodb://localhost:27017/nkmun',
+  org = 'nkmun',
+  server = "http://localhost:8005",
+  force = false,
+  apiIdentity = null,
+  apiKey = null,
+} = program
+
+const agent = require('superagent')
+function API_createObject({name, role, extra}) {
+  return agent.post(`${server}/orgs/${org}/objects/`)
+      .set('x-api-identity', apiIdentity)
+      .set('x-api-key', apiKey)
+      .send({ name, role, extra })
+}
+
+async function asyncForEach(collection, aggregate, map, type) {
+  const cursor = await collection.aggregate([
+    ...(!force ? [{ $match: { [`qr.${org}`]: {$exists: false} } }] : []),
+    ...aggregate
+  ])
+  while (await cursor.hasNext()) {
+    const obj = await cursor.next()
+    let mapped
+
+    try {
+      mapped = map(obj)
+    } catch(e) {
+      console.log(`Failed mapping: ${type} / ${obj._id}`)
+      continue
+    }
+
+    await API_createObject(mapped)
+        .then(
+          resp => {
+            const qrId = resp.body.id
+            console.log(`Inserted ${type} / ${qrId} -> ${mapped.name}`)
+            return collection.updateOne(
+              { _id: obj._id },
+              { $set: { [`qr.${org}`]: qrId } }
+            )
+          },
+          err => {
+            console.log('API Error: ' + err.message)
+          }
+        )
+  }
+}
+
+;(async() => {
+  const nkmun = await require('mongodb').MongoClient.connect( db )
+  const { AGGREGATE_REPRESENTATIVES } = require('../route/representative')
+
+  await asyncForEach(
+    nkmun.collection('representative'),
+    [
+      { $match: { withdraw: { $ne: true } } },
+      ...AGGREGATE_REPRESENTATIVES
+    ],
+    $ => ({
+      role: '代表',
+      name: $.contact.name,
+      extra: {
+        id: $._id,
+        school: $.school.school.name,
+        contact: $.contact
+      }
+    }),
+    'REPR'
+  )
+
+  await asyncForEach(
+    nkmun.collection('dais'),
+    [
+      { $match: { state: 'activated' } }
+    ],
+    $ => ({
+      role: '会场主席',
+      name: $.contact.name,
+      extra: {
+        id: $._id,
+        school: $.school,
+        session: $.role.slice($.role.indexOf('-')),
+        contact: $.contact
+      }
+    }),
+    'DAIS'
+  )
+
+  // volunteer
+  await asyncForEach(
+    nkmun.collection('volunteer'),
+    [],
+    $ => ({
+      role: '志愿者',
+      name: $.contact.name,
+      extra: {
+        id: $._id,
+        school: $.school,
+        contact: $.contact
+      }
+    }),
+    'VLTR'
+  )
+
+  // committee
+  await asyncForEach(
+    nkmun.collection('committee'),
+    [],
+    $ => ({
+      role: '组委',
+      name: $.contact.name,
+      extra: {
+        id: $._id,
+        duty: $.role.slice($.role.indexOf('-')),
+        school: $.school,
+        contact: $.contact
+      }
+    }),
+    'CMMT'
+  )
+
+  await nkmun.close()
+})()
+.then(
+  () => console.log('done.'),
+  err => {
+    console.error(err)
+    console.error(err.stack)
+    process.exit(-1)
+  }
+)
