@@ -229,5 +229,6 @@ route.patch('/representatives/:rid',
 )
 
 module.exports = {
-    routes: route.routes()
+    routes: route.routes(),
+    AGGREGATE_REPRESENTATIVES
 }
