@@ -4,12 +4,12 @@ const program = require('commander')
 
 program
   .version('0.1.0')
-  .option('-o, --org', 'Organization, default: nkmun', String)
+  .option('-o, --org <org>', 'Organization, default: nkmun', String)
   .option('-d, --db, <connStr>',  'Database, default: mongodb://localhost:27017/nkmun', String)
   .option('-f, --force', 'Forcibly Re-sync')
-  .option('-s, --server', 'QR Server Endpoint, default: http://localhost:8005')
-  .option('-i, --api-identity', 'API identity')
-  .option('-k, --api-key', 'API key')
+  .option('-s, --server <server>', 'QR Server Endpoint, default: http://localhost:8005')
+  .option('-i, --api-identity <identity>', 'API identity')
+  .option('-k, --api-key <key>', 'API key')
   .parse(process.argv)
 
 let {
@@ -20,6 +20,10 @@ let {
   apiIdentity = null,
   apiKey = null,
 } = program
+
+console.log(program)
+console.log(`${org} ${server} ${apiIdentity} ${apiKey}`)
+process.exit(1)
 
 const agent = require('superagent')
 function API_createObject({name, role, extra}) {
