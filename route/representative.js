@@ -193,15 +193,8 @@ route.patch('/representatives/:rid',
         const isDais = ctx.hasAccessTo('dais') && !ctx.hasAccessTo('finance') && !ctx.hasAccessTo('admin')
         const extraMatch = isDais ? { session: ctx.token.session } : {}
 
-        // check at least one modifiable field is provided
-        const { note } = getPayload(ctx)
-        if (!note) {
-            ctx.status = 400
-            ctx.body = { error: 'bad request' }
-            return
-        }
-
         let updatePayload = {}
+        const { note } = getPayload(ctx)
         if (note !== undefined) updatePayload.note = note
 
         const {
