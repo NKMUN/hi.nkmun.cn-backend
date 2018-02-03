@@ -14,57 +14,39 @@ route.post('/schools/:id/payments/',
     LogOp('payment', 'payment'),
     School,
     async ctx => {
-       if ( ! ctx.is('multipart') ) {
-           ctx.status = 415
-           ctx.body = { status: false, message: 'Expect multipart/form-data' }
-           return
-       }
+        const { stage } = ctx.school
+        if ( !stage.endsWith('.payment') || Number(stage[0]) >= 3 ) {
+            ctx.status = 412
+            ctx.body = { error: 'incorrect school stage' }
+            return
+        }
 
-       let { stage } = ctx.school
+        const {
+            images
+        } = getPayload(ctx)
 
-       if ( !stage.endsWith('.payment') || Number(stage[0]) >= 3 ) {
-          ctx.status = 412
-          ctx.body = { error: 'incorrect school stage' }
-          return
-       }
+        if (!images) {
+            ctx.status = 400
+            ctx.body = { error: 'bad request' }
+            return
+        }
 
-       let { path, type, size } = ctx.request.body.files.file
+        const {
+            insertedId
+        } = await ctx.db.collection('payment').updateOne({
+            _id: ctx.school._id + '_mp' + stage[0]
+        }, {
+            type: 'manual',
+            school: ctx.params.id,
+            created: new Date(),
+            round: stage[0],
+            images
+        }, {
+            upsert: true
+        })
 
-       if ( size > 2*1024*1024 ) {
-          ctx.status = 400
-          ctx.body = { error: 'too large' }
-          return
-       }
-
-       let {
-         insertedId
-       } = await ctx.db.collection('payment').insertOne({
-          _id: newId(),
-          school: ctx.params.id,
-          created: new Date(),
-          round: stage[0],
-          size,
-          mime: type,
-          buffer: await readFile(path),
-       })
-
-       await unlink(path)
-
-       // update stage -> paid
-       let nextStage = ctx.school.stage.replace('.payment', '.paid')
-       if ( nextStage !== ctx.school.stage ) {
-           await ctx.db.collection('school').updateOne(
-               { _id: ctx.params.id, stage: ctx.school.stage },
-               { $set: { stage: nextStage } }
-           )
-       } else {
-           ctx.status = 412
-           ctx.body = { error: 'incorrect school stage' }
-           return
-       }
-
-       ctx.status = 200
-       ctx.body = { id: insertedId }
+        ctx.status = 200
+        ctx.body = { id: insertedId }
    }
 )
 
@@ -139,7 +121,7 @@ route.patch('/schools/:id/payments/',
                 subject: '汇文国际中学生模拟联合国大会缴费审核结果',
                 html: mailHtml
             })
-    
+
             if (success) {
                 ctx.status = 200
                 ctx.body = { message: 'mail scheduled' }
@@ -159,7 +141,7 @@ route.get('/schools/:id/payments/',
     async ctx => {
         let filter = { school: ctx.params.id }
         if (ctx.query.round)
-           filter[round] = String(ctx.query.round)
+           filter.round = String(ctx.query.round)
 
         ctx.status = 200
         ctx.body = await ctx.db.collection('payment').aggregate([
@@ -176,11 +158,13 @@ route.get('/schools/:id/payments/',
                 _id: false,
                 id: '$_id',
                 time: '$created',
+                type: '$type',
                 round: { $ifNull: ['$round', '1'] },
                 school: {
                     id: '$school._id',
                     name: '$school.school.name'
-                }
+                },
+                images: '$images',
             } }
         ]).toArray()
     }

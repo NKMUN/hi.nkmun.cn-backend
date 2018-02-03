@@ -384,14 +384,15 @@ route.post('/schools/:id/progress',
     async ctx => {
         const {
             confirmReservation,
-            confirmSecondRound
+            confirmSecondRound,
+            confirmPayment
         } = getPayload(ctx)
 
         if (confirmReservation) {
             const reservations = await ctx.db.collection('reservation').find({ school: ctx.params.id }).toArray()
             const roomshares = await ctx.db.collection('reservation').find({ 'roomshare.school': ctx.params.id }).toArray()
             // all roomshare must be null or accepted
-            const reservationsResolved = reservations.every(({roomshare}) => 
+            const reservationsResolved = reservations.every(({roomshare}) =>
                 roomshare === null || roomshare.state === 'accepted' || roomshare.state === 'peer-withdraw'
             )
             const roomsharesResolved = roomshares.every(({roomshare: {state}}) =>
@@ -403,7 +404,7 @@ route.post('/schools/:id/progress',
                 } = await ctx.db.collection('school').updateOne(
                     { _id: ctx.params.id, stage: ctx.school.stage[0]+'.reservation' },
                     { $set: { stage: ctx.school.stage.replace('.reservation', '.payment')} }
-                )           
+                )
                 ctx.status = 200
                 ctx.body = { message: 'ok' }
             } else {
@@ -431,6 +432,26 @@ route.post('/schools/:id/progress',
             } else {
                 ctx.status = 403
                 ctx.body = { error: 'forbidden' }
+            }
+        }
+
+        if (confirmPayment) {
+            // update stage -> paid
+            let nextStage = ctx.school.stage.replace('.payment', '.paid')
+            if ( nextStage !== ctx.school.stage ) {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.params.id, stage: ctx.school.stage },
+                    { $set: { stage: nextStage } }
+                )
+            } else {
+                ctx.status = 412
+                ctx.body = { error: 'incorrect school stage' }
+                return
+            }
+            ctx.status = 200
+            ctx.body = {
+                message: 'ok',
+                nextStage
             }
         }
     }
