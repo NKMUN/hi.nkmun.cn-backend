@@ -81,7 +81,7 @@ route.get('/images/:id',
         const {
             size = "small",
             format = "jpg",
-            cache = "0"
+            cache = "1"
         } = ctx.query
         if ( ! SIZE_MAP[size] ) {
             ctx.status = 400
