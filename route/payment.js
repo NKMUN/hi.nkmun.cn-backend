@@ -170,22 +170,6 @@ route.get('/schools/:id/payments/',
     }
 )
 
-route.get('/schools/:id/payments/:pid',
-    IsSchoolSelfOr('staff', 'finance'),
-    async ctx => {
-        let payment = await ctx.db.collection('payment').findOne({ _id: ctx.params.pid, school: ctx.params.id })
-        if (payment) {
-            ctx.status = 200
-            ctx.set('Content-Type', payment.mime)
-            ctx.set('X-Created-Date', new Date(payment.created).toISOString())
-            ctx.body = payment.buffer.buffer    // payment.buffer is Mongodb.Binary
-        } else {
-            ctx.status = 404
-            ctx.body = { error: 'not found' }
-        }
-    }
-)
-
 module.exports = {
     routes: route.routes()
 }
