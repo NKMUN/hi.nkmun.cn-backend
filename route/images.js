@@ -72,7 +72,7 @@ function respondWithImage(ctx, {
     ctx.set('Content-Length', size)
     ctx.set('Cache-Control', 'public, max-age=31536000')  // cache 1 year
     ctx.set('X-Created-At', new Date(createdAt).toISOString())
-    ctx.set('X-Cache', cached ? 'HIT' : 'MISS')
+    ctx.set('X-Image-Cache', cached ? 'HIT' : 'MISS')
     ctx.body = body
 }
 
