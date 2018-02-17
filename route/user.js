@@ -4,6 +4,7 @@ const route = new Router()
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { sign } = require('jsonwebtoken')
+const { newId } = require('../lib/id-util')
 
 const AUTHORIZATION_PREFIX = 'Bearer '
 const Password = require('../lib/password')
@@ -23,6 +24,12 @@ route.post('/login',
             ctx.status = 401
             ctx.body = { message: 'Invalid credential' }
             ctx.set('WWW-Authenticate', AUTHORIZATION_PREFIX+'token_type="JWT"')
+            return
+        }
+
+        if ( storedCred.active !== undefined && !storedCred.active ) {
+            ctx.status = 403
+            ctx.body = { message: 'Account not activated' }
             return
         }
 
@@ -64,6 +71,8 @@ route.get('/users/',
             } }
         ]).map( $ => ({
             id: $._id,
+            uid: $.uid,
+            active: $.active,
             reserved: $.reserved,
             access: $.access,
             school: $.school && $.school.length > 0
@@ -81,12 +90,11 @@ route.patch('/users/:id',
     LogOp('user', 'patch'),
     async ctx => {
         const {
-            password
+            password,
+            active
         } = getPayload(ctx)
 
-        const user = await ctx.db.collection('user').findOne({
-            _id: { $eq: ctx.params.id }
-        })
+        const user = await ctx.db.collection('user').findOne({ _id: ctx.params.id })
 
         if (user.reserved) {
             ctx.status = 403
@@ -95,14 +103,12 @@ route.patch('/users/:id',
         }
 
         if (password) {
-            let userUpdate = Object.assign(
-                require('../lib/password').derive(password),
-                { lastModified: new Date() }
-            )
-
             await ctx.db.collection('user').updateOne(
-                { _id: { $eq: ctx.params.id } },
-                { $set: userUpdate }
+                { _id: ctx.params.id },
+                { $set: {
+                    ...Password.derive(password),
+                    lastModified: new Date()
+                } }
             )
 
             ctx.log.payload = { }
@@ -112,8 +118,91 @@ route.patch('/users/:id',
             return
         }
 
+        if (active) {
+            await ctx.db.collection('user').updateOne(
+                { _id: ctx.params.id },
+                { $set: {
+                    active,
+                    lastModified: new Date(),
+                } }
+            )
+            ctx.status = 200
+            ctx.body = { }
+            return
+        }
+
         ctx.status = 400
         ctx.body = { error: 'bad request' }
+    }
+)
+
+// Unified Registration
+route.post('/users/',
+    LogOp('user', 'register'),
+    async ctx => {
+        const { email, password, access } = getPayload(ctx)
+
+        const user = await ctx.db.collection('user').findOne({ _id: email })
+        if (user) {
+            ctx.status = 410
+            ctx.body = { error: 'already exists' }
+            return
+        }
+
+        // root can not be created at all time
+        // admin can only be created by root
+        const wantToCreateRoot = access.includes('root')
+        const wantToCreateAdmin = access.includes('admin')
+        if ( wantToCreateRoot || (wantToCreateAdmin && !ctx.hasAccessTo('root')) ) {
+            ctx.status = 400
+            ctx.body = { error: 'can not esclate priviledges' }
+            return
+        }
+
+        // transient access does not require staff verification
+        // admins can do whatever they want
+        const isNotTransientAccess = access.find(accessStr => !accessStr.startsWith('transient.'))
+        const needStaffVerification = isNotTransientAccess && !ctx.hasAccessTo('admin')
+
+        const uid = newId()
+        const active = needStaffVerification ? false : true
+
+        await ctx.db.collection('user').insertOne({
+            _id: email,
+            uid: uid,
+            access: access,
+            reserved: false,
+            created: new Date(),
+            active,
+            ...Password.derive(password)
+        })
+
+        ctx.status = 200
+        ctx.body = {
+            message: 'success',
+            user: email,
+            id: email,
+            active,
+            uid,
+            token: active ? sign({
+                user: email,
+                access,
+                school: null,
+                session: null
+            }, ctx.JWT_SECRET, JWT_OPTS) : null
+        }
+    }
+)
+
+route.head('/users/:id',
+    async ctx => {
+        const user = await ctx.db.collection('user').findOne({ _id: ctx.params.id })
+        if (user) {
+            ctx.status = 200
+            ctx.set('X-User-Exists', '1')
+        } else {
+            ctx.status = 200
+        }
     }
 )
 
