@@ -10,19 +10,16 @@ route.post('/daises/',
         const payload = getPayload(ctx)
         let {
             insertedId
-        } = await ctx.db.collection('dais').insertOne(
-            Object.assign(
-                {
-                    _id: newId(),
-                    login: Object.assign(
-                        { user: payload.contact.email },
-                        require('../lib/password').derive(payload.password)
-                    )
-                },
-                getPayload(ctx),
-                { password: undefined, created_at: new Date() }
-            )
-        )
+        } = await ctx.db.collection('dais').insertOne({
+            _id: newId(),
+            login: {
+                user: payload.contact.email,
+                ...require('../lib/password').derive(payload.password)
+            },
+            ...getPayload(ctx),
+            password: undefined,
+            created_at: new Date()
+        })
 
         ctx.status = 200
         ctx.body = {
@@ -47,7 +44,7 @@ route.post('/daises/:id',
             activate,
             reject
         } = getPayload(ctx)
-        
+
         if (activate) {
             const dais = await ctx.db.collection('dais').findOne({ _id: ctx.params.id })
             if (!dais) {
@@ -60,19 +57,15 @@ route.post('/daises/:id',
                 session
             } = dais
             try {
-                await ctx.db.collection('user').insertOne(
-                    Object.assign(
-                        login,
-                        {
-                            _id: login.user,
-                            access: ['dais'],
-                            reserved: false,
-                            session: session,
-                            school: null,
-                            created: new Date()
-                        }
-                    )
-                )
+                await ctx.db.collection('user').insertOne({
+                    ...login,
+                    _id: login.user,
+                    access: ['dais'],
+                    reserved: false,
+                    session: session,
+                    school: null,
+                    created: new Date()
+                })
             } catch(e) {
                 // duplicate
                 ctx.status = 409

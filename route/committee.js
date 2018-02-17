@@ -9,13 +9,10 @@ route.post('/committees/',
     async ctx => {
         let {
             insertedId
-        } = await ctx.db.collection('committee').insertOne(
-            Object.assign(
-                {},
-                getPayload(ctx),
-                { created_at: new Date()}
-            )
-        )
+        } = await ctx.db.collection('committee').insertOne({
+            ...getPayload(ctx),
+            created_at: new Date()
+        })
 
         ctx.status = 200
         ctx.body = {

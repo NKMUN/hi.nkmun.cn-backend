@@ -464,7 +464,7 @@ route.get('/export/billings',
                 (...results) => results
                     .reduce(flattenArray)   // merge promise results
                     .reduce(flattenArray)   // flatten billing items
-                    .map($ => Object.assign($, { school: school.school.name }))  // merge school name
+                    .map($ => ({...$, school: school.school.name}))  // merge school name
                     .map(BILLING.map)  // use legacy mapper
             ),
             true  // flatten mapped result

@@ -68,7 +68,10 @@ if (!userId) {
     if (password) {
         try{
           let password = await require('password-prompt')('Password: ')
-          user = Object.assign( user, require('../lib/password').derive(password) )
+          user = {
+            ...user,
+            ...require('../lib/password').derive(password)
+          }
         } catch(e) {
           process.exit(1)
         }

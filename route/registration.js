@@ -22,17 +22,15 @@ route.post('/registration',
             login
         } = getPayload(ctx)
 
-        let user = Object.assign(
-            {
-                _id: login.user,
-                user: login.user,
-                access: ['leader'],
-                school: schoolId,
-                reserved: false,
-                created: new Date()
-            },
-            require('../lib/password').derive(login.password)
-        )
+        let user = {
+            _id: login.user,
+            user: login.user,
+            access: ['leader'],
+            school: schoolId,
+            reserved: false,
+            created: new Date(),
+            ...require('../lib/password').derive(login.password)
+        }
 
         let {
             school,

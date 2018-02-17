@@ -32,12 +32,11 @@ route.post('/applications/',
             ctx.status = 409
             ctx.body = { error: 'already exists' }
         } else {
-            await ctx.db.collection('application').insert(
-                Object.assign(
-                    payload,
-                    { _id: newId(), created: new Date() }
-                )
-            )
+            await ctx.db.collection('application').insert({
+                ...payload,
+                _id: newId(),
+                created: new Date()
+            })
             ctx.status = 200
             ctx.body = { message: 'accepted' }
         }

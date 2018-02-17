@@ -178,10 +178,11 @@ route.get('/representatives/',
 
         ctx.status = 200
         ctx.body = (await ctx.db.collection('representative').aggregate(query, AGGREGATE_OPTS).toArray())
-            .map($ => Object.assign(
-                toId($),
-                { school: toId($.school), session: toId($.session) }
-            ))
+            .map($ => ({
+                ...toId($),
+                school: toId($.school),
+                session: toId($.session)
+            }))
     }
 )
 
@@ -201,7 +202,7 @@ route.patch('/representatives/:rid',
             matchedCount,
             modifiedCount
         } = await ctx.db.collection('representative').updateOne(
-            Object.assign({_id: ctx.params.rid}, extraMatch),
+            { _id: ctx.params.rid, ...extraMatch },
             { $set: updatePayload }
         )
 
@@ -213,10 +214,11 @@ route.patch('/representatives/:rid',
             const session = await ctx.db.collection('session').findOne({ _id: representative.session })
             const school = await ctx.db.collection('school').findOne({ _id: representative.school })
             ctx.status = 200
-            ctx.body = Object.assign(
-                toId(representative),
-                { school: toId(school), session: toId(session) }
-            )
+            ctx.body = {
+                ...toId(representative),
+                school: toId(school),
+                session: toId(session)
+            }
         }
     }
 )
