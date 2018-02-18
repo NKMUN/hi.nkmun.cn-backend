@@ -3,14 +3,23 @@ const AUTHORIZATION_PREFIX = 'Bearer '
 const curry = require('curry')
 
 const matchAccessString = curry(
-    (givenAccess, requiredAccess) => 
+    (givenAccess, requiredAccess) =>
         givenAccess === 'root' || `${requiredAccess}.`.startsWith(`${givenAccess}.`)
 )
 
 const hasAccess = curry(
-    (givenAccesses , requiredAccess) => 
+    (givenAccesses , requiredAccess) =>
         givenAccesses.find(givenAccess => matchAccessString(givenAccess, requiredAccess))
 )
+
+async function InjectHasAccessTo(ctx, next) {
+    if (!ctx.token && ctx.request.get('Authorization')) await TokenParser(ctx)
+    const access = ctx.token && ctx.token.access || []
+    ctx.hasAccessTo = hasAccess(access)
+
+    if (next)
+        await next()
+}
 
 async function TokenParser(ctx, next) {
     // check if token is valid, return 401 if not
@@ -29,7 +38,7 @@ async function TokenParser(ctx, next) {
         ctx.token = verify(tokenStr, ctx.JWT_SECRET)
         if (!ctx.token)
             throw new Error('Token invalid or expired')
-        ctx.hasAccessTo = hasAccess((ctx.token && ctx.token.access || []))
+        await InjectHasAccessTo(ctx)
     }catch(e){
         ctx.status = 401
         ctx.body   = { status: false, message: e.message }
@@ -86,6 +95,7 @@ function createTokenAccessFilter(...requiredAccess) {
 
 module.exports = {
     TokenParser,
+    InjectHasAccessTo,
     AccessFilter: createAccessFilter,
     TokenAccessFilter: createTokenAccessFilter
 }

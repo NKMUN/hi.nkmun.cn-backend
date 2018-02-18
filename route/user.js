@@ -10,7 +10,7 @@ const AUTHORIZATION_PREFIX = 'Bearer '
 const Password = require('../lib/password')
 const JWT_OPTS = { expiresIn: '3d' }
 
-const { AccessFilter } = require('./auth')
+const { AccessFilter, TokenParser, InjectHasAccessTo } = require('./auth')
 
 route.post('/login',
     LogOp('auth', 'login'),
@@ -139,8 +139,9 @@ route.patch('/users/:id',
 // Unified Registration
 route.post('/users/',
     LogOp('user', 'register'),
+    InjectHasAccessTo,
     async ctx => {
-        const { email, password, access } = getPayload(ctx)
+        const { email, password, access, session: _session, school: _school } = getPayload(ctx)
 
         const user = await ctx.db.collection('user').findOne({ _id: email })
         if (user) {
@@ -164,8 +165,17 @@ route.post('/users/',
         const isNotTransientAccess = access.find(accessStr => !accessStr.startsWith('transient.'))
         const needStaffVerification = isNotTransientAccess && !ctx.hasAccessTo('admin')
 
+        // school / session can only be set by admins
+        if (!ctx.hasAccessTo('admin') && (_school || _session)) {
+            ctx.status = 400
+            ctx.body = { error: 'can not set school or session' }
+            return
+        }
+
         const uid = newId()
         const active = needStaffVerification ? false : true
+        const school = _school || null
+        const session = _session || null
 
         await ctx.db.collection('user').insertOne({
             _id: email,
@@ -173,6 +183,8 @@ route.post('/users/',
             access: access,
             reserved: false,
             created: new Date(),
+            session,
+            school,
             active,
             ...Password.derive(password)
         })
@@ -187,8 +199,8 @@ route.post('/users/',
             token: active ? sign({
                 user: email,
                 access,
-                school: null,
-                session: null
+                school,
+                session
             }, ctx.JWT_SECRET, JWT_OPTS) : null
         }
     }
@@ -203,6 +215,26 @@ route.head('/users/:id',
         } else {
             ctx.status = 200
         }
+    }
+)
+
+route.delete('/users/:id',
+    AccessFilter('admin'),
+    async ctx => {
+        const user = await ctx.db.collection('user').findOne({ _id: ctx.params.id })
+        if (!user) {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+            return
+        }
+        if (user.reserved) {
+            ctx.status = 403
+            ctx.body = { error: 'user is reserved' }
+            return
+        }
+        await ctx.db.collection('user').deleteOne({ _id: ctx.params.id })
+        ctx.status = 200
+        ctx.body = { message: 'success' }
     }
 )
 
