@@ -19,6 +19,18 @@ function ReturnConfig(id) {
     }
 }
 
+function PutConfig(id) {
+    return async function PutConfig(ctx, next) {
+        await ctx.db.collection('meta').updateOne(
+            { _id: id },
+            { $set: getPayload(ctx) },
+            { upsert: true }
+        )
+        if (next)
+            await next()
+    }
+}
+
 route.get('/config',
     Config,
     async ctx => {
@@ -82,17 +94,20 @@ route.post('/config/mail',
     }
 )
 
+route.get('/config/academic-staff-application', ReturnConfig('academic-staff-application'))
+
+route.put('/config/academic-staff-application',
+    AccessFilter('admin', 'academic-director'),
+    LogOp('config', 'write'),
+    PutConfig('academic-staff-application'),
+    ReturnConfig('academic-staff-application')
+)
+
 route.put('/config/:id',
     AccessFilter('admin'),
     LogOp('config', 'write'),
-    async ctx => {
-        let payload = getPayload(ctx)
-        await ctx.db.collection('meta').update(
-            { _id: ctx.params.id }, { $set: payload }, { upsert: true }
-        )
-        ctx.status = 200
-        ctx.body = payload
-    }
+    async (ctx, next) => PutConfig(ctx.params.id)(ctx, next),
+    async ctx => ReturnConfig(ctx.params.id)(ctx)
 )
 
 module.exports = {
