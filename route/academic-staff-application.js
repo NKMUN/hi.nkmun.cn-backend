@@ -50,6 +50,11 @@ route.patch('/academic-staff-applications/user/:user',
 
         const application = await ctx.db.collection('academic_staff').findOne({ user: ctx.params.user }, { _id: 1 })
         if (application) {
+            if (application.submitted) {
+                ctx.status = 410
+                ctx.body = { error: 'not editable' }
+                return
+            }
             await ctx.db.collection('academic_staff').updateOne(
                 { _id: application._id },
                 { $set: {
