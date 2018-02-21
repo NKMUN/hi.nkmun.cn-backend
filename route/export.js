@@ -424,7 +424,7 @@ const LOOKUP_APPLICATION_CONTACT = [
 ]
 
 route.get('/export/representatives',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -437,7 +437,7 @@ route.get('/export/representatives',
 )
 
 route.get('/export/leaders',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -450,7 +450,7 @@ route.get('/export/leaders',
 )
 
 route.get('/export/billings',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -473,7 +473,7 @@ route.get('/export/billings',
 )
 
 route.get('/export/reservations',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -486,7 +486,7 @@ route.get('/export/reservations',
 )
 
 route.get('/export/committees',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -499,7 +499,7 @@ route.get('/export/committees',
 )
 
 route.get('/export/volunteers',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -512,7 +512,7 @@ route.get('/export/volunteers',
 )
 
 route.get('/export/daises',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -525,7 +525,7 @@ route.get('/export/daises',
 )
 
 route.get('/export/seats',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         const sessions = await ctx.db.collection('session')
             .find({ reserved: { $ne: true } })
@@ -547,7 +547,7 @@ route.get('/export/seats',
 )
 
 route.get('/export/applications/seats',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         const sessions = await ctx.db.collection('session')
             .find({ reserved: { $ne: true } })
@@ -569,7 +569,7 @@ route.get('/export/applications/seats',
 )
 
 route.get('/export/applications/contacts',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
@@ -597,7 +597,7 @@ const NameCreator = () => {
 }
 
 route.get('/export/committees/photos',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'application/zip;charset=utf-8')
@@ -617,7 +617,7 @@ route.get('/export/committees/photos',
 )
 
 route.get('/export/daises/photos',
-    TokenAccessFilter('finance', 'admin'),
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'application/zip;charset=utf-8')

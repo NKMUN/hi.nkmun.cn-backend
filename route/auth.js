@@ -68,13 +68,13 @@ function createAccessFilter(...requiredAccesses) {
     }
 }
 
-function createTokenAccessFilter(...requiredAccess) {
+function createTokenAccessFilter(accessFilter) {
     return async (ctx, next) => {
-        if (!ctx.query.token && await createAccessFilter(...requiredAccess)(ctx)){
+        if (!ctx.query.token && await accessFilter(ctx)){
             // no token, issue one
             ctx.status = 201
             ctx.set('location', '?token='+sign(
-                { 'export': 1 },
+                { path: ctx.request.path },
                 ctx.JWT_SECRET,
                 { expiresIn: '1 min' }
             ))
@@ -82,7 +82,8 @@ function createTokenAccessFilter(...requiredAccess) {
         } else {
             // verify token
             try {
-                verify(ctx.query.token, ctx.JWT_SECRET)
+                token = verify(ctx.query.token, ctx.JWT_SECRET)
+                if (token.path !== ctx.request.path) throw new Error('Mismatch Path')
             } catch(e) {
                 ctx.status = 403
                 ctx.body = { error: 'not authorized' }
