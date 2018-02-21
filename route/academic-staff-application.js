@@ -4,22 +4,26 @@ const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
+const { UploadFile, GetFile } = require('./file')
+const { TokenAccessFilter } = require('./auth')
 
 async function IsSelfOrAdmins(ctx, next) {
     if (!await AccessFilter('transient.academic-staff.apply', 'admin', 'academic-director')(ctx)) {
-        return
+        return false
     }
 
     if (!ctx.hasAccessTo('admin') && !ctx.hasAccessTo('academic-director')) {
         if (ctx.token.user !== ctx.params.user) {
             ctx.status = 403
             ctx.body = { error: 'forbidden' }
-            return
+            return false
         }
     }
 
     if (next)
         await next()
+
+    return true
 }
 
 route.get('/academic-staff-applications/user/:user',
@@ -68,6 +72,23 @@ route.patch('/academic-staff-applications/user/:user',
     }
 )
 
+route.post('/academic-staff-applications/user/:user/files/',
+    IsSelfOrAdmins,
+    async ctx => {
+        const meta = {
+            user: ctx.params.user,
+            access: ['academic-director', 'admin']
+        }
+        await UploadFile(meta)(ctx)
+    }
+)
+
+route.get('/academic-staff-applications/user/:user/files/:id',
+    TokenAccessFilter(IsSelfOrAdmins),
+    async ctx => {
+        await GetFile(ctx.params.id)(ctx)
+    }
+)
 
 module.exports = {
     routes: route.routes()
