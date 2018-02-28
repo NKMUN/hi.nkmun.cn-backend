@@ -62,32 +62,31 @@ route.post('/config/mail',
     async ctx => {
         const { action } = ctx.query
         const { args } = getPayload(ctx)
-        switch (action) {
-            case 'test':
-                if (!args || !String(args).includes('@')) {
-                    ctx.status = 400
-                    ctx.body = { message: 'args: bad email address' }
-                    return
-                }
-
-                const {
-                    success,
-                    error,
-                    transportResponse
-                } = await ctx.mailer.sendMail({
-                    to: args,
-                    subject: 'Hi.NKMUN Email Delivery Test',
-                    html: `This is a test email to ${args} via ${ctx.mailer.name}`
-                })
-
-                if (success) {
-                    ctx.status = 200
-                    ctx.body = { message: 'mail scheduled' }
-                } else {
-                    ctx.status = 503
-                    ctx.body = { message: (error ? error.toString() : '') + ', ' + (transportResponse || '') }
-                }
+        if (action === 'test') {
+            if (!args || !String(args).includes('@')) {
+                ctx.status = 400
+                ctx.body = { message: 'args: bad email address' }
                 return
+            }
+
+            const {
+                success,
+                error,
+                transportResponse
+            } = await ctx.mailer.sendMail({
+                to: args,
+                subject: 'Hi.NKMUN Email Delivery Test',
+                html: `This is a test email to ${args} via ${ctx.mailer.name}`
+            })
+
+            if (success) {
+                ctx.status = 200
+                ctx.body = { message: 'mail scheduled' }
+            } else {
+                ctx.status = 503
+                ctx.body = { message: (error ? error.toString() : '') + ', ' + (transportResponse || '') }
+            }
+            return
         }
         ctx.status = 400
         ctx.body = { message: 'no operation specified' }
