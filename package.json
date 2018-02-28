@@ -21,6 +21,7 @@
     "commander": "^2.9.0",
     "csv-stringify": "^1.0.4",
     "curry": "^1.2.0",
+    "deep-equal": "^1.0.1",
     "escape-string-regexp": "^1.0.5",
     "jsonwebtoken": "^8.0.1",
     "koa": "^2.0.1",

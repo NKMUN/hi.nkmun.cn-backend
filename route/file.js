@@ -2,8 +2,9 @@ const Router = require('koa-router')
 const route = new Router()
 const { readFile, unlink } = require('mz/fs')
 const getPayload = require('./lib/get-payload')
-const { AccessFilter } = require('./auth')
+const { AccessFilter, TokenAccessFilter } = require('./auth')
 const { newId } = require('../lib/id-util')
+const { sign } = require('jsonwebtoken')
 const sharp = require('sharp')
 
 function UploadFile(meta = {}) {
@@ -85,7 +86,25 @@ function GetFile(_id) {
     }
 }
 
+function signFile(secret, id, expires = '1h') {
+    // match TokenAccessFilter's token format
+    return sign(
+        { path: `/files/${id}` },
+        secret,
+        { expiresIn: expires }
+    )
+}
+
+route.get('/files/:id',
+    TokenAccessFilter('root' ,'admin'),
+    async ctx => {
+        await GetFile(ctx.params.id)(ctx)
+    }
+)
+
 module.exports = {
     UploadFile,
-    GetFile
+    GetFile,
+    signFile,
+    routes: route.routes()
 }

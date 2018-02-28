@@ -82,7 +82,7 @@ function createTokenAccessFilter(accessFilter) {
         } else {
             // verify token
             try {
-                token = verify(ctx.query.token, ctx.JWT_SECRET)
+                const token = verify(ctx.query.token, ctx.JWT_SECRET)
                 if (token.path !== ctx.request.path) throw new Error('Mismatch Path')
             } catch(e) {
                 ctx.status = 403
