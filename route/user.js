@@ -8,7 +8,7 @@ const { newId } = require('../lib/id-util')
 
 const AUTHORIZATION_PREFIX = 'Bearer '
 const Password = require('../lib/password')
-const JWT_OPTS = { expiresIn: '3d' }
+const JWT_OPTS = { expiresIn: '6h' }
 
 const { AccessFilter, TokenParser, InjectHasAccessTo } = require('./auth')
 
