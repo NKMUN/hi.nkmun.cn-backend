@@ -195,10 +195,9 @@ route.post('/academic-staff-applications/:id/reviews/',
                     } } }
                 )
             }
-            const aggregate_review = review.score
             await ctx.db.collection('academic_staff').updateOne(
                 { _id: application._id },
-                { $set: { reviews: [review], aggregate_review } }
+                { $set: { reviews: [review], aggregate_review: review && review.score } }
             )
             ctx.status = 200
             ctx.body = {
