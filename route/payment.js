@@ -34,13 +34,20 @@ route.post('/schools/:id/payments/',
         const {
             insertedId
         } = await ctx.db.collection('payment').updateOne({
-            _id: ctx.school._id + '_mp' + stage[0]
-        }, {
-            type: 'manual',
             school: ctx.params.id,
-            created: new Date(),
-            round: stage[0],
-            images
+            active: true
+        }, {
+            $set: {
+                type: 'manual',
+                school: ctx.params.id,
+                created: new Date(),
+                round: stage[0],
+                images
+            },
+            $setOnInsert: {
+                _id: newId(),
+                active: true,
+            }
         }, {
             upsert: true
         })
@@ -71,6 +78,10 @@ route.patch('/schools/:id/payments/',
 
         if (confirm) {
             await LogOp('payment', 'confirm')(ctx)
+            await ctx.db.collection('payment').updateOne(
+                { school: ctx.params.id, active: true },
+                { $set: { active: false } }
+            )
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.params.id },
                 { $set: { stage: `${ctx.school.stage[0]}.complete`} }
@@ -139,9 +150,11 @@ route.patch('/schools/:id/payments/',
 route.get('/schools/:id/payments/',
     IsSchoolSelfOr('staff', 'finance'),
     async ctx => {
-        let filter = { school: ctx.params.id }
+        let filter = { school: ctx.params.id, active: true }
         if (ctx.query.round)
            filter.round = String(ctx.query.round)
+        if (ctx.query.state === 'all')
+            delete filter.active
 
         ctx.status = 200
         ctx.body = await ctx.db.collection('payment').aggregate([
@@ -160,6 +173,7 @@ route.get('/schools/:id/payments/',
                 time: '$created',
                 type: '$type',
                 round: { $ifNull: ['$round', '1'] },
+                active: { $ifNull: ['$active', false] },
                 school: {
                     id: '$school._id',
                     name: '$school.school.name'
