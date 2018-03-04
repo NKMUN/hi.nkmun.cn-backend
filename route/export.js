@@ -284,6 +284,7 @@ const DAIS = {
 const APPLICATION_CONTACT = {
     columns: [
         '学校',
+        '所在地',
         '联系人1',
         '性别2',
         '手机2',
@@ -294,7 +295,8 @@ const APPLICATION_CONTACT = {
         '邮箱2',
     ],
     map: $ => [
-       GV($, 'name'),
+       GV($, 'school.name'),
+       GV($, 'school.administrative_area'),
        GV($, 'contact.name'),
        genderText( GV($, 'contact.gender') ),
        GV($, 'contact.phone'),
@@ -417,7 +419,7 @@ const LOOKUP_APPLICATION_SEAT = [
 const LOOKUP_APPLICATION_CONTACT = [
     { $sort: { 'school.name': 1 } },
     { $project: {
-        name: '$school.name',
+        school: '$school',
         contact: '$contact',
         altContact: '$altContact'
     }}
