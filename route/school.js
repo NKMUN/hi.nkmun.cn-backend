@@ -40,7 +40,8 @@ route.get('/schools/',
         let projection = {
             _id:   0,
             id:    '$_id',
-            name:  '$school.name',
+            type:  { $ifNull: ['$type', 'school'] },
+            name:  { $ifNull: ['$identifier', '$school.name'] },
             stage: '$stage'
         }
         if (ctx.query.seat)
@@ -65,7 +66,11 @@ route.get('/schools/:id',
         }
 
         ctx.status = 200
-        ctx.body = toId(ctx.school)
+        ctx.body = {
+            type: 'school',
+            identifier: ctx.school.school.name,
+            ...toId(ctx.school)
+        }
     }
 )
 
