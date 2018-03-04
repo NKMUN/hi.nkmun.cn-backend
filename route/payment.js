@@ -82,10 +82,17 @@ route.patch('/schools/:id/payments/',
                 { school: ctx.params.id, active: true },
                 { $set: { active: false } }
             )
-            await ctx.db.collection('school').updateOne(
-                { _id: ctx.params.id },
-                { $set: { stage: `${ctx.school.stage[0]}.complete`} }
-            )
+            if (ctx.school.stage[0] === '2') {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.params.id },
+                    { $set: { stage: `1.complete`, 'seat.2pre': ctx.school.seat['2'] } }
+                )
+            } else {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.params.id },
+                    { $set: { stage: `${ctx.school.stage[0]}.complete`} }
+                )
+            }
         }
 
         if (reject) {

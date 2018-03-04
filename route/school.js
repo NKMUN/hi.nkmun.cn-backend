@@ -105,11 +105,10 @@ route.patch('/schools/:id',
 
         if ( field.startsWith('seat.') ) {
             let stage = ctx.school.stage
-            if ( field[5] === stage[0]    // modifies current round
-                 && (stage.endsWith('.paid') || stage.endsWith('.complete'))
-            ) {
+            const currentRoundPaid = field[5] === stage[0] && stage.endsWith('.paid')
+            if (currentRoundPaid) {
                 ctx.status = 412
-                ctx.body = { error: 'incorrect stage to make modify seats' }
+                ctx.body = { error: 'incorrect stage to modify seats' }
                 return
             }
 
@@ -421,13 +420,27 @@ route.post('/schools/:id/progress',
         if (confirmSecondRound) {
             // only admin can allocate second round seats
             if (ctx.hasAccessTo('staff')) {
+                const school = await ctx.db.collection('school').findOne(
+                    { _id: ctx.school._id },
+                    { 'seat.2pre': true }
+                )
+                if (!school.seat['2pre']) {
+                    ctx.status = 410
+                    ctx.body = { error: 'no second round alloc' }
+                    return
+                }
                 let {
                     matchedCount
                 } = await ctx.db.collection('school').updateOne(
                     { _id: ctx.school._id, stage: '1.complete' },
-                    { $set: { stage: '2.reservation' } }
+                    { $set: { stage: '2.reservation', 'seat.2': school.seat['2pre'] } }
                 )
                 if (matchedCount === 1) {
+                    // active second round payment record
+                    const payment = await ctx.db.collection('payment').updateOne(
+                        { school: ctx.school._id, active: false, round: '2' },
+                        { $set: { active: true } }
+                    )
                     ctx.status = 200
                     ctx.body = { ok: 1 }
                 } else {
