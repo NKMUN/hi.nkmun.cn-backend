@@ -12,7 +12,7 @@ route.post('/applications/',
     async ctx => {
         let payload = getPayload(ctx)
 
-        if ( ! ctx.config.apply ) {
+        if ( ! ctx.config.applySchool ) {
             ctx.status = 410
             ctx.body = { error: 'gone' }
             return
@@ -49,7 +49,8 @@ route.get('/applications/',
         let projection = {
             _id: 0,
             id: '$_id',
-            name: '$school.name',
+            type: { $ifNull: ['$type', 'school'] },
+            name: { $ifNull: ['$identifier', '$school.name', ] },
             processed: { $ifNull: ['$processed', false] }
         }
         if (ctx.query.seat)
@@ -68,7 +69,11 @@ route.get('/applications/:id',
         if (result) {
             result.registered = Boolean(await ctx.db.collection('school').findOne({ 'school.name': result.school.name }))
             ctx.status = 200
-            ctx.body = toId(result)
+            ctx.body = {
+                type: 'school',
+                name: result.identifier || result.school.name,
+                ...toId(result)
+            }
         }else{
             ctx.status = 404
             ctx.body = { error: 'not found' }
