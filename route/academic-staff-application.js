@@ -42,7 +42,7 @@ route.get('/academic-staff-applications/',
         const matchFilter = all ? {} : { submitted: true }
         const applications = await ctx.db.collection('academic_staff').aggregate([
             { $match: { submitted: true } },
-            { $project: { _id: 1, aggregate_review: 1, name: 1, gender: 1, roles: 1 } }
+            { $project: { _id: 1, aggregate_review: 1, name: 1, gender: 1, roles: 1, signature_date: 1 } }
         ]).toArray()
         ctx.status = 200
         ctx.body = {
