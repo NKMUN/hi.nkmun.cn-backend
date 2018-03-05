@@ -5,6 +5,7 @@ const getPayload = require('./lib/get-payload')
 const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
+const { exchangeQuota } = require('./ng-quota')
 
 // either from or to should be school itself
 async function hasAccess(ctx, from, to) {
@@ -14,7 +15,7 @@ async function hasAccess(ctx, from, to) {
 
     if ( ctx.hasAccessTo('staff') )
         return true
-    
+
     if ( ctx.hasAccessTo('leader') )
         return school === from || school === to
 
@@ -212,6 +213,12 @@ route.post('/exchanges/:id',
             ctx.log.op = 'accept'
             let from = await ctx.db.collection('school').findOne({ _id: fromSchool })
             let to = await ctx.db.collection('school').findOne({ _id: toSchool })
+
+            await exchangeQuota(
+                ctx,
+                { school: fromSchool, session: fromSession },
+                { school: toSchool, session: toSession }
+            )
 
             if ( from.seat['1'][fromSession] < 1 || to.seat['1'][toSession] < 1 ) {
                 ctx.status = 410

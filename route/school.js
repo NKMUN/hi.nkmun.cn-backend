@@ -9,6 +9,7 @@ const { LogOp } = require('../lib/logger')
 const { filterExchange } = require('./exchange')
 const escapeForRegexp = require('escape-string-regexp')
 const curry = require('curry')
+const { relinquishQuota, exchangeQuota, setLeaderAttend, syncSeatToQuota } = require('./ng-quota')
 
 const IsSchoolSelfOr = (...requiredAccesses) => async (ctx, next) => {
     if ( !ctx.token && await TokenParser(ctx)) {
@@ -132,6 +133,7 @@ route.patch('/schools/:id',
                 ctx.body = { error: 'invalid stage' }
                 return
             }
+            await syncSeatToQuota(ctx, ctx.school._id)
         } else {
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.school._id },
@@ -187,6 +189,8 @@ route.post('/schools/:id/seat',
                 return
             }
 
+            await relinquishQuota(ctx, ctx.school._id, session)
+
             processed = true
         }
 
@@ -209,7 +213,7 @@ route.post('/schools/:id/seat',
                 { _id: ctx.school._id },
                 updateQuery
             )
-            console.error(`leader-attend result: ${matchedCount} ${modifiedCount}`)
+            await setLeaderAttend(ctx, ctx.school._id, leaderAttend)
             processed = true
         }
 

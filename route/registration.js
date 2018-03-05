@@ -4,6 +4,7 @@ const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { Mailer } = require('./mailer')
 const { TokenParser } = require('./auth')
+const { setQuota } = require('./ng-quota')
 
 route.post('/registration',
     TokenParser,
@@ -57,6 +58,7 @@ route.post('/registration',
                 { school: schoolId },
                 { $set: { used: new Date() } }
             )
+            await setQuota(ctx, schoolId, seat)
 
             // surpass payload that contains password
             ctx.log.payload = {

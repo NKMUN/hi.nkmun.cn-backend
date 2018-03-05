@@ -5,7 +5,8 @@ const getPayload = require('./lib/get-payload')
 const { toId, fromId } = require('../lib/id-util')
 
 async function Sessions(ctx, next) {
-    ctx.sessions = await ctx.db.collection('session').find({ }).toArray()
+    if (!ctx.sessions)
+        ctx.sessions = await ctx.db.collection('session').find({ }).toArray()
 
     if (next)
         await next()
