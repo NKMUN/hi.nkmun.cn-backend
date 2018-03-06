@@ -32,7 +32,7 @@ async function filterExchange(ctx, {
         filter['from.school'] = { $eq: from }
     if (to !== undefined && to !== null)
         filter['to.school'] = { $eq: to }
-    if (state !== undefined && to !== null)
+    if (state !== undefined)
         filter['state'] = { $eq: state }
     return await ctx.db.collection('exchange').aggregate([
         { $match: filter }
@@ -165,7 +165,8 @@ route.post('/exchanges/:id',
     async ctx => {
         let {
             accept,
-            refuse
+            refuse,
+            cancel
         } = ctx.request.body
 
         let {
@@ -174,7 +175,16 @@ route.post('/exchanges/:id',
             _id
         } = ctx.exchange
 
-        if ( ctx.token.school && ctx.token.school !== toSchool ) {
+        if (!accept && !refuse && !cancel) {
+            ctx.status = 400
+            ctx.body = { error: 'bad request' }
+            return
+        }
+
+        if (
+             ((accept || refuse) && ctx.token.school !== toSchool)
+          || (cancel && ctx.token.school !== fromSchool)
+         ) {
             ctx.status = 403
             ctx.body = { error: 'forbidden' }
             return
@@ -258,6 +268,25 @@ route.post('/exchanges/:id',
                 await removeUnavailable(ctx, fromSchool, fromSession)
             if (to.seat['1'][toSession] === 0)
                 await removeUnavailable(ctx, toSchool, toSession)
+
+            let {
+                seat: currentSeat
+            } = await ctx.db.collection('school').findOne(
+                { _id: toSchool },
+                { seat: 1 }
+            )
+
+            ctx.status = 200
+            ctx.body = currentSeat
+            return
+        }
+
+        if ( cancel ) {
+            ctx.log.op = 'cancel'
+            await ctx.db.collection('exchange').updateOne(
+                { _id },
+                { $set: { state: 'cancelled' } }
+            )
 
             let {
                 seat: currentSeat
