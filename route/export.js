@@ -33,6 +33,14 @@ const genderText = val => {
     }
 }
 
+const applicationTypeText = val => {
+    switch (val) {
+        case 'school': return '学校'
+        case 'individual': return '个人'
+        default:  return ''
+    }
+}
+
 const idTypeText = val => {
     switch (val) {
         case 'mainland': return '中国大陆身份证'
@@ -283,6 +291,7 @@ const DAIS = {
 
 const APPLICATION_CONTACT = {
     columns: [
+        '类型',
         '学校',
         '所在地',
         '联系人1',
@@ -295,16 +304,17 @@ const APPLICATION_CONTACT = {
         '邮箱2',
     ],
     map: $ => [
+       applicationTypeText(GV($, 'type')),
        GV($, 'school.name'),
        GV($, 'school.administrative_area'),
        GV($, 'contact.name'),
        genderText( GV($, 'contact.gender') ),
        GV($, 'contact.phone'),
        GV($, 'contact.email'),
-       GV($, 'altContact.name'),
-       genderText( GV($, 'altContact.gender') ),
-       GV($, 'altContact.phone'),
-       GV($, 'altContact.email'),
+       GV($, 'alt_contact.name') || GV($, 'guardian.name'),
+       guardianTypeText( GV($, 'alt_contact.gender') ) || GV($, 'guardian.type'),
+       GV($, 'alt_contact.phone') || GV($, 'guardian.phone'),
+       GV($, 'alt_contact.email')
     ]
 }
 
@@ -421,7 +431,8 @@ const LOOKUP_APPLICATION_CONTACT = [
     { $project: {
         school: '$school',
         contact: '$contact',
-        altContact: '$altContact'
+        alt_contact: '$alt_contact',
+        guardian: '$guardian'
     }}
 ]
 

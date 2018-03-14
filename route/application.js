@@ -26,20 +26,26 @@ route.post('/applications/',
 
         ctx.log.application = payload
 
-        let exists = await ctx.db.collection('application').findOne({ "school.name": payload.school.name })
+        let existSchool = await ctx.db.collection('application').findOne({ "school.name": payload.school.name })
 
-        if ( exists ) {
+        if ( existSchool ) {
             ctx.status = 409
-            ctx.body = { error: 'already exists' }
-        } else {
-            await ctx.db.collection('application').insert({
-                ...payload,
-                _id: newId(),
-                created: new Date()
-            })
-            ctx.status = 200
-            ctx.body = { message: 'accepted' }
+            ctx.body = {
+                error: 'already exists',
+                code: 'duplicated_school',
+                text: '学校已报名'
+            }
+            return
         }
+        await ctx.db.collection('application').insert({
+            ...payload,
+            type: 'school',
+            identifier: payload.school.name,
+            _id: newId(),
+            created: new Date()
+        })
+        ctx.status = 200
+        ctx.body = { message: 'accepted' }
     }
 )
 
@@ -117,6 +123,65 @@ route.delete('/applications/:id',
             ctx.status = 404
             ctx.body = { error: 'not found' }
         }
+    }
+)
+
+route.post('/individual-applications/',
+    Config,
+    LogOp('application', 'submit'),
+    async ctx => {
+        let payload = getPayload(ctx)
+
+        if ( ! ctx.config.applyIndividual ) {
+            ctx.status = 410
+            ctx.body = { error: 'gone' }
+            return
+        }
+
+        if ( ! (payload.school && payload.school.name) ) {
+            ctx.status = 400
+            ctx.body = { error: 'bad request' }
+            return
+        }
+
+        ctx.log.application = payload
+
+        let existIdentification = await ctx.db.collection('application').findOne({
+            'contact.name': payload.contact && payload.contact.name,
+            'identification.type': payload.identification && payload.identification.type,
+            'identification.number': payload.identification && payload.identification.number
+        })
+
+        let existEmail = await ctx.db.collection('application').findOne({
+            'contact.email': payload.contact.email
+        })
+
+        let existUser = await ctx.db.collection('user').findOne({
+            _id: payload.contact.email
+        })
+
+        if ( existIdentification || existEmail || existUser ) {
+            ctx.status = 409
+            ctx.body = {
+                error: 'already exists',
+                ...(
+                    existIdentification ? { code: 'duplicated_identification', text: '重复的身份信息' }
+                  : existEmail ? { code: 'duplicated_email', text: '重复的联系人邮箱' }
+                  : existUser ? { code: 'duplicated_user', text: '用户已注册' }
+                  : {}
+                )
+            }
+            return
+        }
+        await ctx.db.collection('application').insert({
+            ...payload,
+            type: 'individual',
+            identifier: '个人 - ' + payload.contact.name,
+            _id: newId(),
+            created: new Date()
+        })
+        ctx.status = 200
+        ctx.body = { message: 'accepted' }
     }
 )
 

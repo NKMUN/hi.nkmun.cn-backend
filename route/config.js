@@ -47,6 +47,7 @@ route.get('/config',
                 requiresChairman: { $ifNull: ['$requiresChairman', false] },
                 exchangeable: { $ifNull: ['$exchangeable', true] },
                 estimatedAttendance: { $ifNull: ['$estimatedAttendance', 0] },
+                allowsIndividual: { $ifNull: ['$allowsIndividual', false] }
             } }
         ]).toArray()
         ctx.body.mailer = ctx.POSTIE ? 'postie' : 'internal'

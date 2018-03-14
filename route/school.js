@@ -479,6 +479,22 @@ route.post('/schools/:id/progress',
     }
 )
 
+route.get('/schools/name/:name',
+    async ctx => {
+        const school = await ctx.db.collection('school').findOne(
+            { 'school.name': ctx.params.name },
+            { contact: true }
+        )
+        if (school) {
+            ctx.status = 200
+            ctx.body = toId(school)
+        } else {
+            ctx.status = 200
+            ctx.body = null
+        }
+    }
+)
+
 module.exports = {
     routes: route.routes(),
     IsSchoolSelfOr,
