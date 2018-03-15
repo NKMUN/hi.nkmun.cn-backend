@@ -8,7 +8,7 @@ const { Sessions } = require('./session')
 
 const Dais = async (ctx, next) => {
     // dais can only get themself
-    if (ctx.hasAccessTo('dais')) {
+    if (ctx.hasAccessTo('dais') && !(ctx.hasAccessTo('admin') || ctx.hasAccessTo('academic_director'))) {
         if (ctx.params.id !== '~') {
             ctx.status = 403
             ctx.body = { error: 'forbidden' }
@@ -45,6 +45,18 @@ const Route_GetDaisById = async ctx => {
     ctx.status = 200
     ctx.body = toId(ctx.dais)
 }
+
+route.get('/daises/',
+    AccessFilter('admin', 'academic_director'),
+    async ctx => {
+        const daises = await ctx.db.collection('dais').find(
+            {},
+            { name: true, user: true, session: true, photoId: true, school: true, contact: true }
+        ).toArray()
+        ctx.status = 200
+        ctx.body = daises.map(toId)
+    }
+)
 
 route.get('/daises/:id',
     AccessFilter('dais', 'admin', 'finance'),
@@ -104,7 +116,7 @@ route.post('/daises/:id',
 
         if (session) {
             await Sessions(ctx)
-            const targetSession = ctx.sessions.find(sess => sess.id === session)
+            const targetSession = ctx.sessions.find(sess => sess._id === session)
             if (!targetSession) {
                 ctx.status = 400
                 ctx.body = { error: 'no such session' }
@@ -148,8 +160,21 @@ route.post('/daises/:id',
             )
         }
 
+        await Route_GetDaisById(ctx)
+    }
+)
+
+route.delete('/daises/:id',
+    AccessFilter('academic_director', 'admin'),
+    Dais,
+    async ctx => {
+        await ctx.db.collection('dais').deleteOne({ _id: ctx.dais._id })
+        await ctx.db.collection('user').updateOne(
+            { _id: ctx.dais.user },
+            { $set: { active: false, access: [] } }
+        )
         ctx.status = 200
-        ctx.body = await Route_GetDaisById(ctx)
+        ctx.body = { message: 'nuked' }
     }
 )
 

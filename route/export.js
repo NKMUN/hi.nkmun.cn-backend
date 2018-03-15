@@ -405,7 +405,6 @@ const LOOKUP_VOLUNTEER = [
 ]
 
 const LOOKUP_DAIS = [
-    { $match: { state: 'activated' } },
     { $sort: { role: 1, 'contact.name': 1 } }
 ]
 
@@ -525,7 +524,7 @@ route.get('/export/volunteers',
 )
 
 route.get('/export/daises',
-    TokenAccessFilter(AccessFilter('finance', 'admin')),
+    TokenAccessFilter(AccessFilter('finance', 'admin', 'academic-director')),
     async ctx => {
         ctx.status = 200
         ctx.set('content-type', 'text/csv;charset=utf-8')
