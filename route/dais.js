@@ -4,96 +4,7 @@ const { readFile, unlink } = require('mz/fs')
 const getPayload = require('./lib/get-payload')
 const { AccessFilter } = require('./auth')
 const { newId, toId } = require('../lib/id-util')
-
-route.post('/daises/',
-    async ctx => {
-        const payload = getPayload(ctx)
-        let {
-            insertedId
-        } = await ctx.db.collection('dais').insertOne({
-            _id: newId(),
-            login: {
-                user: payload.contact.email,
-                ...require('../lib/password').derive(payload.password)
-            },
-            ...getPayload(ctx),
-            password: undefined,
-            created_at: new Date()
-        })
-
-        ctx.status = 200
-        ctx.body = {
-            id: insertedId
-        }
-    }
-)
-
-route.get('/daises/',
-    AccessFilter('admin'),
-    async ctx => {
-        const daises = await ctx.db.collection('dais').find({}, { login: false }).toArray()
-        ctx.status = 200
-        ctx.body = daises.map(toId)
-    }
-)
-
-route.post('/daises/:id',
-    AccessFilter('admin'),
-    async ctx => {
-        const {
-            activate,
-            reject
-        } = getPayload(ctx)
-
-        if (activate) {
-            const dais = await ctx.db.collection('dais').findOne({ _id: ctx.params.id })
-            if (!dais) {
-                ctx.status = 404
-                ctx.body = { error: 'not found' }
-                return
-            }
-            const {
-                login,
-                session
-            } = dais
-            try {
-                await ctx.db.collection('user').insertOne({
-                    ...login,
-                    _id: login.user,
-                    access: ['dais'],
-                    reserved: false,
-                    session: session,
-                    school: null,
-                    created: new Date()
-                })
-            } catch(e) {
-                // duplicate
-                ctx.status = 409
-                ctx.body = { error: 'already exists' }
-                return
-            }
-            await ctx.db.collection('dais').updateOne(
-                { _id: ctx.params.id },
-                { $set: { state: 'activated' } }
-            )
-            ctx.status = 200
-        }
-
-        if (reject) {
-            await ctx.db.collection('dais').updateOne(
-                { _id: ctx.params.id },
-                { $set: { state: 'rejected' } }
-            )
-            ctx.status = 200
-        }
-
-        if (ctx.status === 200) {
-            ctx.body = toId(
-                await ctx.db.collection('dais').findOne({ _id: ctx.params.id }, { login: false })
-            )
-        }
-    }
-)
+const { Sessions } = require('./session')
 
 const Dais = async (ctx, next) => {
     // dais can only get themself
@@ -107,15 +18,23 @@ const Dais = async (ctx, next) => {
 
     const dais = await ctx.db.collection('dais').findOne(
       ctx.params.id === '~'
-        ? { state: 'activated', 'login.user': ctx.token.user }
-        : { _id: ctx.params.id },
-      { 'login.hash': false, 'login.salt': false, 'login.iter': false }
+        ? { user: ctx.token.user }
+        : { _id: ctx.params.id }
     )
+
     if (!dais) {
         ctx.status = 404
         ctx.body = { error: 'not found' }
         return
     }
+
+    // inject user account state
+    const user = await ctx.db.collection('user').findOne(
+        { _id: dais.user },
+        { hash: false, salt: false, iter: false }
+    )
+
+    dais.account_active = Boolean(user && user.active)
 
     ctx.dais = dais
     if (next) await next()
@@ -162,6 +81,75 @@ route.patch('/daises/:id',
         )
 
         await Route_GetDaisById(ctx)
+    }
+)
+
+route.post('/daises/:id',
+    AccessFilter('academic_director', 'admin'),
+    Dais,
+    async ctx => {
+        const {
+            activate,
+            deactivate,
+            session
+        } = getPayload(ctx)
+
+        if (!activate && !deactivate && !session) {
+            ctx.status = 400
+            ctx.body = { error: 'no action' }
+            return
+        }
+
+        const { _id, user } = ctx.dais
+
+        if (session) {
+            await Sessions(ctx)
+            const targetSession = ctx.sessions.find(sess => sess.id === session)
+            if (!targetSession) {
+                ctx.status = 400
+                ctx.body = { error: 'no such session' }
+                return
+            }
+            await ctx.db.collection('dais').updateOne(
+                { _id: _id },
+                { $set: {
+                    session: targetSession._id,
+                    role: '主席-' + targetSession.name,
+                    last_modified: new Date()
+                } }
+            )
+            await ctx.db.collection('user').updateOne(
+                { _id: user },
+                { $set: {
+                    access: ['dais'],
+                    session: targetSession._id
+                } }
+            )
+            // continue to activate / deactivate, do not end handler
+        }
+
+        if (activate) {
+            await ctx.db.collection('user').updateOne(
+                { _id: user },
+                { $set: {
+                    active: true,
+                    access: ['dais']
+                } }
+            )
+        }
+
+        if (deactivate) {
+            await ctx.db.collection('user').updateOne(
+                { _id: user },
+                { $set: {
+                    active: false,
+                    access: []
+                } }
+            )
+        }
+
+        ctx.status = 200
+        ctx.body = await Route_GetDaisById(ctx)
     }
 )
 

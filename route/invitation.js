@@ -29,8 +29,8 @@ route.post('/invitations/',
             used: false
         })
 
-        let { invitation } = ctx.mailConfig
-        let mailHtml = String(invitation).replace(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g, (m, key) => {
+        const { invitation } = ctx.mailConfig
+        const mailHtml = String(invitation).replace(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g, (m, key) => {
             switch (key) {
                 case 'school': return application.school.name
                 case 'name':   return application.contact.name

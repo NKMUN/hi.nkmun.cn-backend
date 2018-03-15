@@ -7,6 +7,7 @@ const { toId, newId } = require('../lib/id-util')
 const { UploadFile, GetFile, signFile } = require('./file')
 const { TokenAccessFilter } = require('./auth')
 const deepEqual = require('deep-equal')
+const { Mailer }= require('./mailer')
 
 async function IsSelfOrAdmins(ctx, next) {
     if (!await AccessFilter('transient.academic-staff.apply', 'admin', 'academic-director')(ctx)) {
@@ -42,7 +43,7 @@ route.get('/academic-staff-applications/',
         const matchFilter = all ? {} : { submitted: true }
         const applications = await ctx.db.collection('academic_staff').aggregate([
             { $match: { submitted: true } },
-            { $project: { _id: 1, aggregate_review: 1, name: 1, gender: 1, roles: 1, signature_date: 1 } }
+            { $project: { _id: 1, aggregate_review: 1, name: 1, gender: 1, roles: 1, signature_date: 1, admission_status: 1 } }
         ]).toArray()
         ctx.status = 200
         ctx.body = {
@@ -52,7 +53,7 @@ route.get('/academic-staff-applications/',
             data: applications.map(toId).map(application => ({
                 ...application,
                 reviewed: application.aggregate_review !== null,
-                processed: application.invited || application.refused
+                processed: application.admission_status !== undefined
             }))
         }
     }
@@ -205,6 +206,128 @@ route.post('/academic-staff-applications/:id/reviews/',
                 changed: reviewChanged,
                 reviews: [review]
             }
+        }
+    }
+)
+
+async function sendAcademicStaffAdmissionEmail(ctx, templateName, application) {
+    await Mailer(ctx, async _ => {
+        const template = ctx.mailConfig[templateName]
+        const mailHtml = String(template).replace(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g, (m, key) => {
+            switch (key) {
+                case 'school': return application.school
+                case 'name':   return application.name
+                default:       return ''
+            }
+        })
+
+        await ctx.mailer.sendMail({
+            to: application.user,
+            subject: '汇文国际中学生模拟联合国大会学术团队招募结果',
+            html: mailHtml
+        })
+    })
+}
+
+route.post('/academic-staff-applications/:id/',
+    AccessFilter('academic-director', 'admin'),
+    async ctx => {
+        const {
+            admit,
+            waitlist,
+            refuse
+        } = ctx.request.body
+
+        if (!admit && !waitlist && !refuse) {
+            ctx.status = 400
+            ctx.body = { error: 'no action specified' }
+            return
+        }
+
+        const application = await ctx.db.collection('academic_staff').findOne({ _id: ctx.params.id })
+        const { _id, admission_status, user } = application
+        if (!application) {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+            return
+        }
+
+        if (admit) {
+            if (['admitted', 'refused'].includes(admission_status)) {
+                ctx.status = 409
+                ctx.body = { admission_status, error: 'already ' + admission_status }
+                return
+            }
+            const {
+                insertedId: dais_id
+            } = await ctx.db.collection('dais').insertOne({
+                _id: newId(),
+                application_id: _id,
+                user,
+                session: null,
+                role: '主席-未分配',
+                photoId: application.photoId,
+                school: application.school,
+                contact: {
+                    name: application.name,
+                    gender: application.gender,
+                    phone: application.phone,
+                    email: application.user,
+                    qq: application.qq
+                },
+                identification: application.identification,
+                guardian: application.guardian,
+                guardian_identification: application.guardian_identification,
+                comment: null,
+                checkInDate: null,
+                checkOutDate: null,
+                arriveDate: null,
+                departDate: null
+            })
+            await ctx.db.collection('academic_staff').updateOne(
+                { _id },
+                { $set: { admission_status: 'admitted', dais_id } }
+            )
+            await ctx.db.collection('user').updateOne(
+                { _id: user },
+                { $set: { access: ['dais'], session: null } }
+            )
+            await sendAcademicStaffAdmissionEmail(ctx, 'academic_staff_admit', application)
+            ctx.status = 200
+            ctx.body = { admission_status: 'admitted' }
+            return
+        }
+
+        if (waitlist) {
+            if (['admitted', 'waitlist', 'admitted'].includes(admission_status)) {
+                ctx.status = 409
+                ctx.body = { admission_status, error: 'already ' + admission_status }
+                return
+            }
+            await ctx.db.collection('academic_staff').updateOne(
+                { _id },
+                { $set: { admission_status: 'waitlist' } }
+            )
+            await sendAcademicStaffAdmissionEmail(ctx, 'academic_staff_waitlist', application)
+            ctx.status = 200
+            ctx.body = { admission_status: 'waitlist' }
+            return
+        }
+
+        if (refuse) {
+            if (['admitted', 'refused'].includes(admission_status)) {
+                ctx.status = 409
+                ctx.body = { admission_status, error: 'already ' + admission_status }
+                return
+            }
+            await ctx.db.collection('academic_staff').updateOne(
+                { _id },
+                { $set: { admission_status: 'refused' } }
+            )
+            await sendAcademicStaffAdmissionEmail(ctx, 'academic_staff_refuse', application)
+            ctx.status = 200
+            ctx.body = { admission_status: 'refused' }
+            return
         }
     }
 )
