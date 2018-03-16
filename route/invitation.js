@@ -14,9 +14,9 @@ route.post('/invitations/',
     Mailer,
     async ctx => {
         const { school } = getPayload(ctx)
-        let application = await ctx.db.collection('application').findOne({ _id: school })
+        const application = await ctx.db.collection('application').findOne({ _id: school })
 
-        let invitationCode = ShortId.generate()
+        const invitationCode = ShortId.generate()
 
         ctx.log.school = school
         ctx.log.invitation = invitationCode
@@ -29,8 +29,12 @@ route.post('/invitations/',
             used: false
         })
 
-        const { invitation } = ctx.mailConfig
-        const mailHtml = String(invitation).replace(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g, (m, key) => {
+        const { invitation_school, invitation_individual } = ctx.mailConfig
+        const template = application.type === 'individual' ? invitation_individual
+                       : application.type === 'school' ? invitation_school
+                       : invitation_school
+
+        const mailHtml = String(template).replace(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g, (m, key) => {
             switch (key) {
                 case 'school': return application.school.name
                 case 'name':   return application.contact.name
@@ -94,20 +98,23 @@ route.get('/invitations/:code', async ctx => {
     }
 
     let {
+        _id,
+        type,
+        identifier,
         school,
-        _id
+        contact,
     } = await ctx.db.collection('application').findOne(
         { _id: invitation.school },
-        { 'school.name': 1, 'school.englishName': 1, _id: 1 }
+        { _id: true, type: true, identifier: true, school: true, contact: true }
     )
 
     ctx.status = 200
     ctx.body = {
-        school: {
-            name: school.name,
-            englishName: school.englishName
-        },
-        token: sign({ school: _id }, ctx.JWT_SECRET, { expiresIn: '1 hour' })
+        identifier,
+        type,
+        school,
+        contact,
+        token: sign({ school: _id, type }, ctx.JWT_SECRET, { expiresIn: '1 hour' })
     }
 })
 

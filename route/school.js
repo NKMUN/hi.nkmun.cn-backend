@@ -13,7 +13,10 @@ const { relinquishQuota, exchangeQuota, setLeaderAttend, syncSeatToQuota } = req
 
 const IsSchoolSelfOr = (...requiredAccesses) => async (ctx, next) => {
     if ( !ctx.token && await TokenParser(ctx)) {
-        if ( ctx.token.access.includes('leader') && ctx.params.id === ctx.token.school )
+        if (
+            (ctx.hasAccessTo('leader') || ctx.hasAccessTo('individual'))
+            && ctx.params.id === ctx.token.school
+        )
             return await next()
         else
             return await AccessFilter(...requiredAccesses)(ctx, next)

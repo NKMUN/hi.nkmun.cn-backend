@@ -11,8 +11,12 @@ route.post('/registration',
     LogOp('registration', 'register'),
     async ctx => {
         const { db, token } = ctx
-        const schoolId = token.school
-        if ( ! schoolId ) {
+        const {
+            school: schoolId,
+            type
+        } = token
+
+        if ( !schoolId || !type ) {
             ctx.status = 400
             ctx.body = { error: 'bad request' }
             return
@@ -26,28 +30,49 @@ route.post('/registration',
         let user = {
             _id: login.user,
             user: login.user,
-            access: ['leader'],
+            access: type === 'school' ? ['leader'] : ['individual'],
             school: schoolId,
             reserved: false,
             created: new Date(),
             ...require('../lib/password').derive(login.password)
         }
 
-        let {
+        const {
+            identifier,
             school,
+            contact,
+            identification,
+            graduation,
+            guardian,
+            guardian_identification,
             seat
         } = await db.collection('application').findOne(
             { _id: schoolId },
-            { seat: 1, school: 1 }
+            { ac_test: false }
         )
 
         try {
             await db.collection('user').insert(user)
             await db.collection('school').insert({
                 _id: schoolId,
+                type,
+                identifier,
+                application_id: schoolId,
+                ...(
+                    type === 'individual'
+                  ? { representative: {
+                        contact,
+                        graduation_year: graduation,
+                        identification: identification,
+                        guardian: guardian,
+                        guardian_identification: guardian_identification,
+                        comment: ''
+                    } }
+                  : {}
+                ),
                 school: school,
                 leader: leader,
-                stage: '1.relinquishment',
+                stage: type === 'school' ? '1.relinquishment' : '1.reservation',
                 seat: {
                     '1': seat,
                     '2': {}
