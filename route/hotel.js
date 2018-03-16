@@ -11,7 +11,7 @@ async function getHotel(ctx, id) {
 }
 
 route.get('/hotels/',
-    AccessFilter('leader', 'staff.accommodation'),
+    AccessFilter('leader', 'individual', 'staff.accommodation'),
     async ctx => {
         ctx.status = 200
         ctx.body = (await ctx.db.collection('hotel').find({}).toArray()).map( toId )

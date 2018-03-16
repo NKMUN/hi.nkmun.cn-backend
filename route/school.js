@@ -34,8 +34,14 @@ async function School(ctx, next) {
     }
 }
 
+function findIndividualSession(seat) {
+    for (let key in seat)
+        if (seat[key] > 0)
+            return key
+}
+
 route.get('/schools/',
-    AccessFilter('leader', 'staff', 'finance'),
+    AccessFilter('leader', 'individual', 'staff', 'finance'),
     async ctx => {
         let filter = {}
         if (ctx.query.stage)
@@ -162,7 +168,6 @@ route.post('/schools/:id/seat',
             confirmPayment,
             allocSecondRound,
             leaderAttend,
-            startConfirm,
             confirmAttend,
             session,
             round,
@@ -268,47 +273,6 @@ route.post('/schools/:id/seat',
             processed = true
         }
 
-        // startConfirm
-        if (startConfirm) {
-            if ( !ctx.hasAccessTo('staff') ) {
-                ctx.status = 403
-                ctx.body = { error: 'forbidden' }
-                return
-            }
-            let {
-                matchedCount
-            } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.school._id, stage: { $in: ['1.complete', '2.complete'] } },
-                { $set: { stage: '3.confirm' } }
-            )
-            if (matchedCount !== 1) {
-                ctx.status = 404
-                ctx.body = { error: 'not found' }
-                return
-            }
-            // insert representatives
-            let leaderAttend = ctx.school.seat['1']['_leader_r'] >= 1 || !ctx.school.seat['1']['_leader_nr']
-            for (let round in ctx.school.seat)
-                for (let session in ctx.school.seat[round])
-                    for (let i=0; i!==ctx.school.seat[round][session]; ++i) {
-                        if (session !== '_leader_r') {
-                            // is_leader: representative is leader
-                            // if !leaderAttend (leader is not representative) -> infer leader from _leader_nr session
-                            // if leaderAttend -> ask user to select leader
-                            ctx.db.collection('representative').insertOne({
-                                _id: newId(),
-                                school: ctx.school._id,
-                                session,
-                                round,
-                                created: new Date(),
-                                is_leader: leaderAttend ? false : (session==='_leader_nr' ? true: null),
-                                withdraw: false,
-                            })
-                        }
-                    }
-            processed = true
-        }
-
         if (confirmAttend) {
             let {
                 matchedCount
@@ -396,7 +360,8 @@ route.post('/schools/:id/progress',
         const {
             confirmReservation,
             confirmSecondRound,
-            confirmPayment
+            confirmPayment,
+            startConfirm
         } = getPayload(ctx)
 
         if (confirmReservation) {
@@ -426,37 +391,37 @@ route.post('/schools/:id/progress',
 
         if (confirmSecondRound) {
             // only admin can allocate second round seats
-            if (ctx.hasAccessTo('staff')) {
-                const school = await ctx.db.collection('school').findOne(
-                    { _id: ctx.school._id },
-                    { 'seat.2pre': true }
-                )
-                if (!school.seat['2pre']) {
-                    ctx.status = 410
-                    ctx.body = { error: 'no second round alloc' }
-                    return
-                }
-                let {
-                    matchedCount
-                } = await ctx.db.collection('school').updateOne(
-                    { _id: ctx.school._id, stage: '1.complete' },
-                    { $set: { stage: '2.reservation', 'seat.2': school.seat['2pre'] } }
-                )
-                if (matchedCount === 1) {
-                    // active second round payment record
-                    const payment = await ctx.db.collection('payment').updateOne(
-                        { school: ctx.school._id, active: false, round: '2' },
-                        { $set: { active: true } }
-                    )
-                    ctx.status = 200
-                    ctx.body = { ok: 1 }
-                } else {
-                    ctx.status = 409
-                    ctx.body = { error: 'conflict', message: 'invalid stage to progress second round' }
-                }
-            } else {
+            if (!ctx.hasAccessTo('staff')) {
                 ctx.status = 403
                 ctx.body = { error: 'forbidden' }
+                return
+            }
+            const school = await ctx.db.collection('school').findOne(
+                { _id: ctx.school._id },
+                { 'seat.2pre': true }
+            )
+            if (!school.seat['2pre']) {
+                ctx.status = 410
+                ctx.body = { error: 'no second round alloc' }
+                return
+            }
+            let {
+                matchedCount
+            } = await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id, stage: '1.complete' },
+                { $set: { stage: '2.reservation', 'seat.2': school.seat['2pre'] } }
+            )
+            if (matchedCount === 1) {
+                // active second round payment record
+                const payment = await ctx.db.collection('payment').updateOne(
+                    { school: ctx.school._id, active: false, round: '2' },
+                    { $set: { active: true } }
+                )
+                ctx.status = 200
+                ctx.body = { ok: 1 }
+            } else {
+                ctx.status = 409
+                ctx.body = { error: 'conflict', message: 'invalid stage to progress second round' }
             }
         }
 
@@ -479,6 +444,75 @@ route.post('/schools/:id/progress',
                 nextStage
             }
         }
+
+        if (startConfirm) {
+            // only staff can start confirmation process
+            if (!ctx.hasAccessTo('staff')) {
+                ctx.status = 403
+                ctx.body = { error: 'forbidden' }
+                return
+            }
+            if (ctx.school.stage !== '1.complete' && ctx.school.stage !== '2.complete') {
+                ctx.status = 409
+                ctx.body = { error: 'invalid stage' }
+                return
+            }
+            if (ctx.school.type === 'school') {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id },
+                    { $set: { stage: '3.confirm' } }
+                )
+                // insert representatives
+                let leaderAttend = ctx.school.seat['1']['_leader_r'] >= 1 || !ctx.school.seat['1']['_leader_nr']
+                for (let round in ctx.school.seat)
+                    for (let session in ctx.school.seat[round])
+                        for (let i=0; i!==ctx.school.seat[round][session]; ++i) {
+                            if (session !== '_leader_r') {
+                                // is_leader: representative is leader
+                                // if !leaderAttend (leader is not representative) -> infer leader from _leader_nr session
+                                // if leaderAttend -> ask user to select leader
+                                ctx.db.collection('representative').insertOne({
+                                    _id: newId(),
+                                    school: ctx.school._id,
+                                    session,
+                                    round,
+                                    created: new Date(),
+                                    is_leader: leaderAttend ? false
+                                             : session==='_leader_nr' ? true
+                                             : null,
+                                    withdraw: false,
+                                })
+                            }
+                        }
+                ctx.status = 200
+                ctx.body = { message: 'ok', nextStage: '3.confirm' }
+                return
+            }
+            if (ctx.school.type === 'individual') {
+                const representative = ctx.school.representative
+                const nextStage = representative.confirmed ? '9.complete' : '3.confirm'
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id },
+                    { $set: { stage: nextStage } }
+                )
+                // insert representative
+                await ctx.db.collection('representative').insertOne({
+                    _id: newId(),
+                    school: ctx.school._id,
+                    session: findIndividualSession(ctx.school.seat['1']),
+                    round: '1',
+                    created: new Date(),
+                    is_leader: null,
+                    withdraw: false,
+                    ...representative
+                })
+                ctx.status = 200
+                ctx.body = { message: 'ok', nextStage }
+                return
+            }
+            ctx.status = 500
+            ctx.body = { error: 'unknown school type' }
+        }
     }
 )
 
@@ -495,6 +529,120 @@ route.get('/schools/name/:name',
             ctx.status = 200
             ctx.body = null
         }
+    }
+)
+
+async function ReturnIndividualInfo(ctx) {
+    if (ctx.school.type !== 'individual') {
+        ctx.status = 404
+        ctx.body = { error: 'not found' }
+        return
+    }
+
+    if (ctx.school.stage[0] === '3' || ctx.school.stage[0] === '9') {
+        const representative = toId(await ctx.db.collection('representative').findOne({ school: ctx.school._id }))
+        ctx.status = 200
+        ctx.body = {
+            ...representative,
+            confirmed: ctx.school.stage[0] === '9',
+        }
+    } else {
+        const {
+            seat,
+            representative
+        } = await ctx.db.collection('school').findOne({ _id: ctx.school._id })
+        ctx.status = 200
+        ctx.body = {
+            ...representative,
+            session: findIndividualSession(seat['1'])
+        }
+    }
+}
+
+route.get('/schools/:id/individual',
+    IsSchoolSelfOr('admin'),
+    School,
+    ReturnIndividualInfo
+)
+
+route.patch('/schools/:id/individual',
+    IsSchoolSelfOr('admin'),
+    School,
+    async ctx => {
+        if (ctx.school.type !== 'individual') {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+            return
+        }
+
+        let payload = getPayload(ctx)
+        delete payload.school
+        delete payload.round
+        delete payload.session
+        delete payload.confirmed
+        delete payload.contact
+        delete payload.withdraw
+
+        if (ctx.school.stage[0] === '3' || ctx.school.stage[0] === '9') {
+            await ctx.db.collection('representative').updateOne(
+                { school: ctx.school._id },
+                { $set: payload }
+            )
+            await ReturnIndividualInfo(ctx)
+        } else {
+            let updateSet = {}
+            for (let key in payload)
+                updateSet[`representative.${key}`] = payload[key]
+            await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id },
+                { $set: updateSet }
+            )
+            await ReturnIndividualInfo(ctx)
+        }
+    }
+)
+
+route.post('/schools/:id/individual',
+    IsSchoolSelfOr('admin'),
+    School,
+    async ctx => {
+        if (ctx.school.type !== 'individual') {
+            ctx.status = 404
+            ctx.body = { error: 'not found' }
+            return
+        }
+
+        const {
+            confirm
+        } = getPayload(ctx)
+
+        if (confirm) {
+            if (ctx.school.representative.confirmed || ctx.school.stage[0] === '9') {
+                ctx.status = 410
+                ctx.body = { error: 'already confirmed' }
+                return
+            }
+
+            if (ctx.school.stage[0] === '3') {
+                // individual confirms after representative entry creation
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id },
+                    { $set: { stage: '9.complete' } }
+                )
+                await School(ctx)
+            } else {
+                await ctx.db.collection('school').updateOne(
+                    { _id: ctx.school._id },
+                    { $set: { 'representative.confirmed': true } }
+                )
+            }
+
+            await ReturnIndividualInfo(ctx)
+            return
+        }
+
+        ctx.status = 400
+        ctx.body = { error: 'no action' }
     }
 )
 
