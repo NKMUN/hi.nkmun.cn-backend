@@ -74,7 +74,7 @@ route.post('/registration',
                 leader: leader,
                 stage: type === 'school' ? '1.relinquishment' : '1.reservation',
                 seat: {
-                    '1': seat,
+                    '1': seat || {},
                     '2': {}
                 },
                 created: new Date()
