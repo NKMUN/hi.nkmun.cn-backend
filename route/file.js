@@ -6,6 +6,7 @@ const { AccessFilter, TokenAccessFilter } = require('./auth')
 const { newId } = require('../lib/id-util')
 const { sign } = require('jsonwebtoken')
 const sharp = require('sharp')
+const contentDisposition = require('content-disposition')
 
 function UploadFile(meta = {}) {
     return async ctx => {
@@ -81,7 +82,7 @@ function GetFile(_id) {
         ctx.set('Content-Length', file.size)
         ctx.set('X-Created-At', file.created)
         if (original_name)
-            ctx.set('Content-Disposition', `attachment; filename=${file.name}`)
+            ctx.set('Content-Disposition', contentDisposition(file.name))
         ctx.body = file.buffer.buffer
     }
 }

@@ -19,6 +19,7 @@
   "dependencies": {
     "archiver": "^2.0.3",
     "commander": "^2.9.0",
+    "content-disposition": "^0.5.2",
     "csv-stringify": "^1.0.4",
     "curry": "^1.2.0",
     "deep-equal": "^1.0.1",
