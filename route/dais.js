@@ -114,7 +114,7 @@ route.post('/daises/:id',
 
         const { _id, user } = ctx.dais
 
-        if (session) {
+        if (session !== undefined) {
             await Sessions(ctx)
             const targetSession = ctx.sessions.find(sess => sess._id === session)
             if (!targetSession) {
