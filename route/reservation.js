@@ -167,7 +167,7 @@ route.get('/schools/:id/reservations/',
                 },
                 school: {
                     id: '$school._id',
-                    name: '$school.school.name'
+                    name: { $ifNull: ['$school.identifier', '$school.school.name'] },
                 },
                 roomshare: { $cond: {
                     if: { $eq: ['$roomshare', null] },
@@ -184,7 +184,7 @@ route.get('/schools/:id/reservations/',
             if ($.roomshare && $.roomshare.school.length)
                 $.roomshare.school = {
                     id: $.roomshare.school[0]._id,
-                    name: $.roomshare.school[0].school.name
+                    name: $.roomshare.school[0].identifier
                 }
             return $
         })
@@ -230,12 +230,12 @@ route.get('/schools/:id/reservations/',
                 },
                 school: {
                     id: '$school._id',
-                    name: '$school.school.name'
+                    name: { $ifNull: ['$school.identifier', '$school.school.name'] },
                 },
                 roomshare: {
                     school: {
                         id: '$roomshareSchool._id',
-                        name: '$roomshareSchool.school.name',
+                        name: { $ifNull: ['$roomshareSchool.identifier', '$roomshareSchool.school.name'] },
                     },
                     state: '$roomshare.state'
                 }
@@ -414,12 +414,12 @@ route.post('/schools/:id/roomshare/:rid',
                 },
                 school: {
                     id: school._id,
-                    name: school.school.name
+                    name: school.identifier || school.school.name
                 },
                 roomshare: {
                     school: {
                         id: roomshareSchool._id,
-                        name: roomshareSchool.school.name
+                        name: roomshareSchool.identifier || roomshareSchool.school.name
                     },
                     state: reservation.roomshare.state
                 }
