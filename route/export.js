@@ -70,7 +70,7 @@ const roomshareState = val => {
         }
     }
     if (val.roomshare) {
-        const roomshareSchoolName = val.roomshareSchool[0] ? val.roomshareSchool[0].school.name : ''
+        const roomshareSchoolName = val.roomshareSchool[0] ? val.roomshareSchool[0].identifier : ''
         const roomshareConclusion = val.roomshare.state === 'accepted' ? '是' : ''
         return [roomshareConclusion, roomshareSchoolName, roomshareStateText(val.roomshare.state)]
     } else {
@@ -147,7 +147,7 @@ const RESERVATION = {
         '拼房状态'
     ],
     map: $ => [
-        GV($, 'school.school.name'),
+        GV($, 'identifier'),
         GV($, 'hotel.name'),
         GV($, 'hotel.type'),
         GV($, 'checkIn'),
@@ -346,7 +346,7 @@ const AGGREGATE_OPTS = {
 }
 
 const LOOKUP_SCHOOL_BILLING = [
-    { $sort: { 'school.name': 1 }}
+    { $sort: { 'identifier': 1 }}
 ]
 
 const LOOKUP_REPRESENTATIVE = [
@@ -362,7 +362,7 @@ const LOOKUP_REPRESENTATIVE = [
         from: 'session',
         as: 'session',
     } },
-    { $sort: { 'school.school.name': 1 } },
+    { $sort: { 'identifier': 1 } },
     { $unwind: '$school' },
     { $unwind: '$session' }
 ]
@@ -391,7 +391,7 @@ const LOOKUP_RESERVATION = [
         foreignField: '_id',
         as: 'roomshareSchool'
     } },
-    { $sort: { 'school.school.name': 1 } },
+    { $sort: { 'identifier': 1 } },
     { $unwind: '$hotel' },
     { $unwind: '$school' },
 ]
@@ -409,18 +409,18 @@ const LOOKUP_DAIS = [
 ]
 
 const LOOKUP_SCHOOL_SEAT = [
-    { $sort: { 'school.name': 1 } },
+    { $sort: { 'identifier': 1 } },
     { $project: {
-        name: '$school.name',
+        name: '$identifier',
         r1: '$seat.1',
         r2: {$ifNull: ['$seat.2', {}]}
     }}
 ]
 
 const LOOKUP_APPLICATION_SEAT = [
-    { $sort: { 'school.name': 1 } },
+    { $sort: { 'identifier': 1 } },
     { $project: {
-        name: '$school.name',
+        name: '$identifier',
         seat: '$seat'
     }}
 ]
@@ -476,7 +476,7 @@ route.get('/export/billings',
                 (...results) => results
                     .reduce(flattenArray)   // merge promise results
                     .reduce(flattenArray)   // flatten billing items
-                    .map($ => ({...$, school: school.school.name}))  // merge school name
+                    .map($ => ({...$, school: school.identifier}))  // merge school name
                     .map(BILLING.map)  // use legacy mapper
             ),
             true  // flatten mapped result
