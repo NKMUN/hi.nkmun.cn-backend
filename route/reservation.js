@@ -98,8 +98,8 @@ route.post('/schools/:id/reservations/',
         )
 
         if (modifiedCount !== 1) {
-            ctx.status = 410
-            ctx.body = { error: 'gone' }
+            ctx.status = 409
+            ctx.body = { error: 'no stock' }
             return
         }
 
@@ -425,8 +425,8 @@ route.post('/schools/:id/roomshare/:rid',
                 }
             }
         } else {
-            ctx.status = 410
-            ctx.body = { error: 'gone', message: 'peer cancelled roomshare' }
+            ctx.status = 409
+            ctx.body = { error: 'peer cancelled', message: 'peer cancelled roomshare' }
         }
     }
 )

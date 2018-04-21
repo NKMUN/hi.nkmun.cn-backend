@@ -145,7 +145,7 @@ route.post('/users/',
 
         const user = await ctx.db.collection('user').findOne({ _id: email })
         if (user) {
-            ctx.status = 410
+            ctx.status = 409
             ctx.body = { error: 'already exists' }
             return
         }

@@ -192,7 +192,7 @@ route.post('/schools/:id/seat',
             )
 
             if ( ! matchedCount ) {
-                ctx.status = 410
+                ctx.status = 409
                 ctx.body = { error: 'insufficient seats' }
                 return
             }
@@ -262,7 +262,7 @@ route.post('/schools/:id/seat',
                               .every( $ => (ctx.school.seat['1'][$._id] || 0) % 2 === 0 )
             )
             if ( ! dualSessionHasDualSeats ) {
-                ctx.status = 410
+                ctx.status = 409
                 ctx.body = { error: 'dual session must have dual seats' }
                 return
             }
@@ -401,7 +401,7 @@ route.post('/schools/:id/progress',
                 { 'seat.2pre': true }
             )
             if (!school.seat['2pre']) {
-                ctx.status = 410
+                ctx.status = 409
                 ctx.body = { error: 'no second round alloc' }
                 return
             }
@@ -618,7 +618,7 @@ route.post('/schools/:id/individual',
 
         if (confirm) {
             if (ctx.school.representative.confirmed || ctx.school.stage[0] === '9') {
-                ctx.status = 410
+                ctx.status = 409
                 ctx.body = { error: 'already confirmed' }
                 return
             }

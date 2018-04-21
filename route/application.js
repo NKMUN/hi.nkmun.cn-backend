@@ -13,7 +13,7 @@ route.post('/applications/',
         let payload = getPayload(ctx)
 
         if ( ! ctx.config.applySchool ) {
-            ctx.status = 410
+            ctx.status = 409
             ctx.body = { error: 'gone' }
             return
         }
@@ -133,7 +133,7 @@ route.post('/individual-applications/',
         let payload = getPayload(ctx)
 
         if ( ! ctx.config.applyIndividual ) {
-            ctx.status = 410
+            ctx.status = 409
             ctx.body = { error: 'gone' }
             return
         }

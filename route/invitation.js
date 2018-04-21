@@ -92,7 +92,7 @@ route.get('/invitations/:code', async ctx => {
     })
 
     if ( ! invitation ) {
-        ctx.status = 410
+        ctx.status = 404
         ctx.body = { error: 'no such invitation' }
         return
     }

@@ -129,9 +129,9 @@ route.post('/exchanges/',
             seat: 1
         })
 
-        if ( ! (from && to && selfInExchange<from.seat['1'][selfSession]) ) {
-            ctx.status = 410
-            ctx.body = { error: 'gone' }
+        if ( ! (from && to && selfInExchange < from.seat['1'][selfSession]) ) {
+            ctx.status = 409
+            ctx.body = { error: 'all seats in exchange, can not overbid.' }
             return
         }
 
@@ -191,8 +191,8 @@ route.post('/exchanges/:id',
         }
 
         if ( ctx.exchange.state ) {
-            ctx.status = 410
-            ctx.body = { error: 'gone' }
+            ctx.status = 409
+            ctx.body = { error: 'peer processed this exchange' }
             await ctx.db.collection('exchange').updateOne(
                 { _id },
                 { $set: { state: 'unavailable' } }
@@ -231,8 +231,8 @@ route.post('/exchanges/:id',
             )
 
             if ( from.seat['1'][fromSession] < 1 || to.seat['1'][toSession] < 1 ) {
-                ctx.status = 410
-                ctx.body = { error: 'gone' }
+                ctx.status = 409
+                ctx.body = { error: 'no seat available' }
                 await ctx.db.collection('exchange').updateOne(
                     { _id },
                     { $set: { state: 'unavailable' } }
