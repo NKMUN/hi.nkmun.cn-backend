@@ -6,6 +6,15 @@ const { AccessFilter } = require('./auth')
 const { newId } = require('../lib/id-util')
 const sharp = require('sharp')
 
+function tryParseJSON(str) {
+    if (!str) return null
+    try {
+        return JSON.parse(str)
+    } catch(e) {
+        return null
+    }
+}
+
 route.post('/images/',
     async ctx => {
         const { db } = ctx
@@ -15,7 +24,8 @@ route.post('/images/',
             return
         }
 
-        let { path, type, size } = ctx.request.body.files.file
+        const { path, type, size } = ctx.request.body.files.file
+        const meta = tryParseJSON(ctx.request.body.fields.meta)
         if ( size > 20*1024*1024 ) {
             ctx.status = 400
             ctx.body = { error: 'too large' }
@@ -30,6 +40,7 @@ route.post('/images/',
             size,
             mime: type,
             buffer: await readFile(path),
+            meta
         })
 
         await unlink(path)
