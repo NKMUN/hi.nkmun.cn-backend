@@ -331,6 +331,7 @@ route.delete('/schools/:id',
         await ctx.db.collection('invitation').deleteMany({ school: { $eq: id } })
         await ctx.db.collection('representative').deleteMany({ school: { $eq: id } })
         await ctx.db.collection('user').deleteMany({ school: {$eq: id}, reserved: {$ne: true} })
+        await ctx.db.collection('application').deleteMany({ _id: { $eq: id } })    // application and school share same id
 
         // flag accepted roomshares, should notify roomshare initiators
         await ctx.db.collection('reservation').updateMany(
