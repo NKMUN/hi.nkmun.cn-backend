@@ -465,8 +465,8 @@ route.post('/schools/:id/progress',
                 )
                 // insert representatives
                 let leaderAttend = ctx.school.seat['1']['_leader_r'] >= 1 || !ctx.school.seat['1']['_leader_nr']
-                for (let round in ctx.school.seat)
-                    for (let session in ctx.school.seat[round])
+                for (let round of ['1', '2'])
+                    for (let session in (ctx.school.seat[round] || {}))
                         for (let i=0; i!==ctx.school.seat[round][session]; ++i) {
                             if (session !== '_leader_r') {
                                 // is_leader: representative is leader
