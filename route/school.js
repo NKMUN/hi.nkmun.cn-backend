@@ -399,31 +399,29 @@ route.post('/schools/:id/progress',
             }
             const school = await ctx.db.collection('school').findOne(
                 { _id: ctx.school._id },
-                { 'seat.2pre': true }
+                { 'seat.2pre': true, stage: true }
             )
             if (!school.seat['2pre']) {
                 ctx.status = 409
                 ctx.body = { error: 'no second round alloc' }
                 return
             }
-            let {
-                matchedCount
-            } = await ctx.db.collection('school').updateOne(
-                { _id: ctx.school._id, stage: '1.complete' },
-                { $set: { stage: '2.reservation', 'seat.2': school.seat['2pre'] } }
-            )
-            if (matchedCount === 1) {
-                // active second round payment record
-                const payment = await ctx.db.collection('payment').updateOne(
-                    { school: ctx.school._id, active: false, round: '2' },
-                    { $set: { active: true } }
-                )
-                ctx.status = 200
-                ctx.body = { ok: 1 }
-            } else {
+            if (school.stage !== '2.reservation' && school.stage !== '2.payment' && school.stage !== '2.complete') {
                 ctx.status = 409
                 ctx.body = { error: 'conflict', message: 'invalid stage to progress second round' }
+                return
             }
+            await ctx.db.collection('school').updateOne(
+                { _id: ctx.school._id },
+                { $set: { stage: '2.reservation', 'seat.2': school.seat['2pre'] } }
+            )
+            // active second round payment record
+            await ctx.db.collection('payment').updateOne(
+                { school: ctx.school._id, active: false, round: '2' },
+                { $set: { active: true } }
+            )
+            ctx.status = 200
+            ctx.body = { ok: 1 }
         }
 
         if (confirmPayment) {
