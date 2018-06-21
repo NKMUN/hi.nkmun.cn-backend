@@ -30,6 +30,7 @@
     "koa-body": "^2.0.0",
     "koa-mongo-sanitize": "github:wacky6/koa-mongo-sanitize",
     "koa-router": "^7.1.0",
+    "mime": "^2.3.1",
     "mongodb": "^2.2.22",
     "mz": "^2.4.0",
     "nodemailer": "^4.1.0",

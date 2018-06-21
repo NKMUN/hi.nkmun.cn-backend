@@ -5,6 +5,10 @@ const CsvStringify = require('csv-stringify')
 const Archiver = require('archiver')
 const { PassThrough } = require('stream')
 const { getBillingDetail } = require('./billing')
+const mime = require('mime')
+
+// catch null, and rename jpeg to jpg
+const getExtension = (...arg) => (mime.getExtension(...arg) || '').replace('jpeg', 'jpg')
 
 const GV = (obj, key) => {
     let keys = key.split('.')
@@ -75,6 +79,29 @@ const roomshareState = val => {
         return [roomshareConclusion, roomshareSchoolName, roomshareStateText(val.roomshare.state)]
     } else {
         return ['', '', '']
+    }
+}
+
+const provinceCityText = val => {
+    return Array.isArray(val) ? val.join(' / ') : ''
+}
+
+const paymentMethodText = val => {
+    switch (val) {
+        case 'cash': return '现金'
+        case 'bank': return '银行转账'
+        case 'alipay': return '支付宝'
+        default: return ''
+    }
+}
+
+const reimbursementStateText = val => {
+    switch (val) {
+        case 'submitted': return '待审核'
+        case 'approved': return '已通过'
+        case 'rejected': return '未通过'
+        case 'completed': return '已完成'
+        default: return '未提交'
     }
 }
 
@@ -318,6 +345,33 @@ const APPLICATION_CONTACT = {
     ]
 }
 
+const DAIS_REIMBURSEMENT = {
+    columns: [
+        '主席姓名',
+        '学校所在地',
+        '家庭居住地',
+        '出发地',
+        '目的地',
+        '来程路费',
+        '回程路费',
+        '报销方式',
+        '来程报销状态',
+        '回程报销状态',
+    ],
+    map: $ => [
+        GV($, 'contact.name'),
+        provinceCityText( GV($, 'reimbursement.school_region') ),
+        provinceCityText( GV($, 'reimbursement.residence_region') ),
+        provinceCityText( GV($, 'reimbursement.inbound.region') ),
+        provinceCityText( GV($, 'reimbursement.outbound.region') ),
+        Number(GNV($, 'reimbursement.inbound.cost')).toFixed(2),
+        Number(GNV($, 'reimbursement.outbound.cost')).toFixed(2),
+        paymentMethodText( GV($, 'reimbursement.payment_method') ),
+        reimbursementStateText( GV($, 'reimbursement.inbound.state') ),
+        reimbursementStateText( GV($, 'reimbursement.outbound.state') ),
+    ]
+}
+
 const createCsvStream = (cursor, columns, map, flatten = false) => {
     const stream = new CsvStringify()
     stream.write(columns)
@@ -433,6 +487,10 @@ const LOOKUP_APPLICATION_CONTACT = [
         alt_contact: '$alt_contact',
         guardian: '$guardian'
     }}
+]
+
+const LOOKUP_DAIS_REIMBURSEMENT = [
+    { $sort: { 'contact.name': 1 } }
 ]
 
 route.get('/export/representatives',
@@ -608,21 +666,30 @@ const NameCreator = () => {
     }
 }
 
+const addExtensionFromMime = (name, mime) => {
+    return `${name}.${getExtension(mime)}`
+}
+
+const archiverAppendDbImage = (archiver, db, imageId, name) => {
+    return db.collection('image').findOne({ _id: imageId }).then(
+        image => image
+            ? archiver.append(image.buffer.buffer, { name: addExtensionFromMime(name, image.mime), date: image.created })
+            : null
+    )
+}
+
 route.get('/export/committees/photos',
     TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
+        let archiver = Archiver('zip', {store: true})
         ctx.status = 200
         ctx.set('content-type', 'application/zip;charset=utf-8')
-        let archiver = Archiver('zip', {store: true})
         ctx.body = archiver.pipe(new PassThrough())
         const committees = await ctx.db.collection('committee').aggregate(LOOKUP_COMMITTEE).toArray()
         const createName = NameCreator()
         for (let committee of committees) {
-            const prefix = GV(committee, 'role') + '-' + GV(committee, 'contact.name')
-            const name = createName(prefix) + '.jpg'
-            const photo = await ctx.db.collection('image').findOne({ _id: committee.photoId })
-            if (photo)
-                archiver.append(photo.buffer.buffer, { name, date: photo.created })
+            const name = createName(GV(committee, 'role') + '-' + GV(committee, 'contact.name'))
+            await archiverAppendDbImage(archiver, ctx.db, committee.photoId, name)
         }
         archiver.finalize()
     }
@@ -631,18 +698,58 @@ route.get('/export/committees/photos',
 route.get('/export/daises/photos',
     TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
+        let archiver = Archiver('zip', {store: true})
         ctx.status = 200
         ctx.set('content-type', 'application/zip;charset=utf-8')
-        let archiver = Archiver('zip', {store: true})
         ctx.body = archiver.pipe(new PassThrough())
         const daises = await ctx.db.collection('dais').aggregate(LOOKUP_DAIS).toArray()
         const createName = NameCreator()
         for (let dais of daises) {
-            const prefix = GV(dais, 'role') + '-' + GV(dais, 'contact.name')
-            const name = createName(prefix) + '.jpg'
-            const photo = await ctx.db.collection('image').findOne({ _id: dais.photoId })
-            if (photo)
-                archiver.append(photo.buffer.buffer, { name, date: photo.created })
+            const name = createName(GV(dais, 'role') + '-' + GV(dais, 'contact.name'))
+            await archiverAppendDbImage(archiver, ctx.db, dais.photoId, name)
+        }
+        archiver.finalize()
+    }
+)
+
+route.get('/export/daises/reimbursements',
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('dais').aggregate(LOOKUP_DAIS_REIMBURSEMENT, AGGREGATE_OPTS),
+            DAIS_REIMBURSEMENT.columns,
+            DAIS_REIMBURSEMENT.map
+        )
+    }
+)
+
+route.get('/export/daises/reimbursement-credentials',
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
+    async ctx => {
+        const STATES_TO_EXPORT = ['approved', 'completed']
+        let archiver = Archiver('zip', {store: true})
+        ctx.status = 200
+        ctx.set('content-type', 'application/zip;charset=utf-8')
+        ctx.body = archiver.pipe(new PassThrough())
+        const daises = await ctx.db.collection('dais').aggregate(LOOKUP_DAIS_REIMBURSEMENT, AGGREGATE_OPTS).toArray()
+        const createName = NameCreator()
+        for (let dais of daises) {
+            const inboundState = GV(dais, 'reimbursement.inbound.state')
+            if (STATES_TO_EXPORT.includes(inboundState)) {
+                const inboundCreds = GV(dais, 'reimbursement.inbound.credential') || []
+                const name = createName(GV(dais, 'contact.name') + '-来程')
+                for (let photoId of inboundCreds)
+                    await archiverAppendDbImage(archiver, ctx.db, photoId, name)
+            }
+            const outboundState = GV(dais, 'reimbursement.outbound.state')
+            if (STATES_TO_EXPORT.includes(outboundState)) {
+                const outboundCreds = GV(dais, 'reimbursement.inbound.credential') || []
+                const name = createName(GV(dais, 'contact.name') + '-回程')
+                for (let photoId of outboundCreds)
+                    await archiverAppendDbImage(archiver, ctx.db, photoId, name)
+            }
         }
         archiver.finalize()
     }
