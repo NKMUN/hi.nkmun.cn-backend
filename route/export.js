@@ -102,7 +102,7 @@ const REPRESENTATIVE = {
     map: $ => [
        isLeaderText( GV($, 'is_leader') ),
        withdrawText( GV($, 'withdraw') ),
-       GV($, 'school.school.name'),
+       GV($, 'school.identifier'),
        GV($, 'session.name'),
        GV($, 'contact.name'),
        genderText( GV($, 'contact.gender') ),
@@ -147,7 +147,7 @@ const RESERVATION = {
         '拼房状态'
     ],
     map: $ => [
-        GV($, 'identifier'),
+        GV($, 'school.identifier'),
         GV($, 'hotel.name'),
         GV($, 'hotel.type'),
         GV($, 'checkIn'),
@@ -362,9 +362,9 @@ const LOOKUP_REPRESENTATIVE = [
         from: 'session',
         as: 'session',
     } },
-    { $sort: { 'identifier': 1 } },
     { $unwind: '$school' },
-    { $unwind: '$session' }
+    { $unwind: '$session' },
+    { $sort: { 'school.type': 1, 'school.identifier': 1 } },
 ]
 
 const LOOKUP_LEADER = [
@@ -391,9 +391,9 @@ const LOOKUP_RESERVATION = [
         foreignField: '_id',
         as: 'roomshareSchool'
     } },
-    { $sort: { 'identifier': 1 } },
     { $unwind: '$hotel' },
     { $unwind: '$school' },
+    { $sort: { 'school.type': 1, 'school.identifier': 1 } },
 ]
 
 const LOOKUP_COMMITTEE = [
