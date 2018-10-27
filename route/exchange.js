@@ -1,8 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
-const { AccessFilter, TokenParser } = require('./auth')
-const getPayload = require('./lib/get-payload')
-const { Config } = require('./config')
+const { AccessFilter } = require('./auth')
 const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 const { exchangeQuota } = require('./ng-quota')
@@ -122,7 +120,7 @@ route.post('/exchanges/',
         let selfInExchange = await ctx.db.collection('exchange').count({
             'from.school': schoolId,
             'from.session': selfSession,
-            state: { $nin: ['accepted', 'refused'] }
+            state: false
         }, {
             _id: 1,
             school: 1,
@@ -291,7 +289,7 @@ route.post('/exchanges/:id',
             let {
                 seat: currentSeat
             } = await ctx.db.collection('school').findOne(
-                { _id: toSchool },
+                { _id: fromSchool },
                 { seat: 1 }
             )
 
