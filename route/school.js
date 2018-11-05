@@ -406,7 +406,11 @@ route.post('/schools/:id/progress',
                 ctx.body = { error: 'no second round alloc' }
                 return
             }
-            if (school.stage !== '2.reservation' && school.stage !== '2.payment' && school.stage !== '2.complete') {
+            if (   school.stage !== '2.reservation'
+                && school.stage !== '2.payment'
+                && school.stage !== '2.complete'
+                && school.stage !== '1.complete'
+            ) {
                 ctx.status = 409
                 ctx.body = { error: 'conflict', message: 'invalid stage to progress second round' }
                 return
