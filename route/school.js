@@ -3,12 +3,9 @@ const route = new Router()
 const { AccessFilter, TokenParser } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { Sessions } = require('./session')
-const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 const { filterExchange } = require('./exchange')
-const escapeForRegexp = require('escape-string-regexp')
-const curry = require('curry')
 const { relinquishQuota, exchangeQuota, setLeaderAttend, syncSeatToQuota } = require('./ng-quota')
 
 const IsSchoolSelfOr = (...requiredAccesses) => async (ctx, next) => {
@@ -40,12 +37,20 @@ function findIndividualSession(seat) {
             return key
 }
 
+// return a aggregation projection field decl
+function sumMapRepr(mapper) {
+    return { $sum: { $map: { input: '$representatives', as: 'repr', in: mapper }} }
+}
+
 route.get('/schools/',
     AccessFilter('leader', 'individual', 'staff', 'finance'),
     async ctx => {
         let filter = {}
-        if (ctx.query.stage)
+        if (ctx.query.stage) {
             filter.stage = { $eq: ctx.query.stage }
+        }
+
+        let lookup = []
 
         let projection = {
             _id:   0,
@@ -54,12 +59,41 @@ route.get('/schools/',
             name:  { $ifNull: ['$identifier', '$school.name'] },
             stage: '$stage'
         }
-        if (ctx.query.seat)
+
+        if (ctx.query.seat) {
             projection.seat = '$seat'
+        }
+
+        if (ctx.query.representative_status) {
+            lookup.push({
+                from: 'representative',
+                localField: '_id',
+                foreignField: 'school',
+                as: 'representatives'
+            })
+            projection = {
+                ... projection,
+                attending_representatives: sumMapRepr({$cond: ['$$repr.withdraw', 0, 1]}),
+                withdrawn_representatives: sumMapRepr({$cond: ['$$repr.withdraw', 1, 0]}),
+                disclaimer_approved_representatives: sumMapRepr({$cond: [
+                    { $and: [
+                        { $ne: ['$$repr.withdraw', true] },
+                        { $eq: ['$$repr.disclaimer_approval', true] }
+                    ]}, 1, 0
+                ]}),
+                disclaimer_rejected_representatives: sumMapRepr({$cond: [
+                    { $and: [
+                        { $ne: ['$$repr.withdraw', true] },
+                        { $eq: ['$$repr.disclaimer_approval', false] }
+                    ]}, 1, 0
+                ]})
+            }
+        }
 
         ctx.status = 200
         ctx.body = await ctx.db.collection('school').aggregate([
             { $match: filter },
+            ... lookup.map(decl => ({ $lookup: decl })),
             { $project: projection }
         ]).toArray()
     }
