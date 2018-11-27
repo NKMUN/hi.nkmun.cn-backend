@@ -40,7 +40,6 @@ const makeRepresentativeEntry = (representative, session, school) => {
         guardian: representative.guardian,
         guardian_identification: representative.guardian_identification,
         alt_guardian: representative.alt_guardian,
-        alt_guardian_identification: representative.alt_guardian_identification,
         disclaimer_image: representative.disclaimer_image,
         disclaimer_approval: representative.disclaimer_approval,
         disclaimer_approval_note: representative.disclaimer_approval_note,
