@@ -619,6 +619,8 @@ route.patch('/schools/:id/individual',
         delete payload.confirmed
         delete payload.contact
         delete payload.withdraw
+        delete payload.disclaimer_approval
+        delete payload.disclaimer_approval_note
 
         if (ctx.school.stage[0] === '3' || ctx.school.stage[0] === '9') {
             await ctx.db.collection('representative').updateOne(
