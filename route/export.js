@@ -105,10 +105,17 @@ const reimbursementStateText = val => {
     }
 }
 
+const disclaimerApprovalText = val => {
+    if (val === true) return '通过'
+    if (val === false) return '未通过'
+    return '待审核'
+}
+
 const REPRESENTATIVE = {
     columns: [
         '领队标记',
         '退会标记',
+        '权责声明',
         '学校',
         '会场',
         '姓名',
@@ -118,17 +125,21 @@ const REPRESENTATIVE = {
         '毕业时间',
         '证件类型',
         '证件号码',
-        '监护人关系',
-        '监护人姓名',
-        '监护人手机',
-        '监护人证件类型',
-        '监护人证件号码',
+        '第一监护人关系',
+        '第一监护人姓名',
+        '第一监护人手机',
+        '第一监护人证件类型',
+        '第一监护人证件号码',
+        '第二监护人关系',
+        '第二监护人姓名',
+        '第二监护人手机',
         '备注',
         '席位'
     ],
     map: $ => [
        isLeaderText( GV($, 'is_leader') ),
        withdrawText( GV($, 'withdraw') ),
+       disclaimerApprovalText( GV($, 'disclaimer_approval') ),
        GV($, 'school.identifier'),
        GV($, 'session.name'),
        GV($, 'contact.name'),
@@ -141,6 +152,9 @@ const REPRESENTATIVE = {
        guardianTypeText( GV($, 'guardian.type') ),
        GV($, 'guardian.name'),
        GV($, 'guardian.phone'),
+       guardianTypeText( GV($, 'alt_guardian.type') ),
+       GV($, 'alt_guardian.name'),
+       GV($, 'alt_guardian.phone'),
        idTypeText( GV($, 'guardian_identification.type') ),
        GV($, 'guardian_identification.number'),
        GV($, 'comment'),
