@@ -152,11 +152,11 @@ const REPRESENTATIVE = {
        guardianTypeText( GV($, 'guardian.type') ),
        GV($, 'guardian.name'),
        GV($, 'guardian.phone'),
+       idTypeText( GV($, 'guardian_identification.type') ),
+       GV($, 'guardian_identification.number'),
        guardianTypeText( GV($, 'alt_guardian.type') ),
        GV($, 'alt_guardian.name'),
        GV($, 'alt_guardian.phone'),
-       idTypeText( GV($, 'guardian_identification.type') ),
-       GV($, 'guardian_identification.number'),
        GV($, 'comment'),
        GV($, 'note')
     ]
