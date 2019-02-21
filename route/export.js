@@ -369,6 +369,11 @@ const DAIS_REIMBURSEMENT = {
         '来程路费',
         '回程路费',
         '报销方式',
+        '银行-卡号',
+        '银行-开户行',
+        '银行-开户人',
+        '支付宝-账号',
+        '支付宝-姓名',
         '来程报销状态',
         '回程报销状态',
     ],
@@ -381,6 +386,11 @@ const DAIS_REIMBURSEMENT = {
         Number(GNV($, 'reimbursement.inbound.cost')).toFixed(2),
         Number(GNV($, 'reimbursement.outbound.cost')).toFixed(2),
         paymentMethodText( GV($, 'reimbursement.payment_method') ),
+        GV($, 'reimbursement.bank.account'),
+        GV($, 'reimbursement.bank.branch'),
+        GV($, 'reimbursement.bank.name'),
+        GV($, 'reimbursement.alipay.account'),
+        GV($, 'reimbursement.alipay.name'),
         reimbursementStateText( GV($, 'reimbursement.inbound.state') ),
         reimbursementStateText( GV($, 'reimbursement.outbound.state') ),
     ]
@@ -759,7 +769,7 @@ route.get('/export/daises/reimbursement-credentials',
             }
             const outboundState = GV(dais, 'reimbursement.outbound.state')
             if (STATES_TO_EXPORT.includes(outboundState)) {
-                const outboundCreds = GV(dais, 'reimbursement.inbound.credential') || []
+                const outboundCreds = GV(dais, 'reimbursement.outbound.credential') || []
                 const name = createName(GV(dais, 'contact.name') + '-回程')
                 for (let photoId of outboundCreds)
                     await archiverAppendDbImage(archiver, ctx.db, photoId, name)
