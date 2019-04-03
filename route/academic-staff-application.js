@@ -355,7 +355,12 @@ route.post('/academic-staff-applications/actions/remove_unnecessary_users',
         let deleted = []
 
         for (let email of usersToDelete) {
-            const { deletedCount } = await ctx.db.collection('user').deleteOne({ _id: email })
+            const {
+                deletedCount
+            } = await ctx.db.collection('user').deleteOne({
+                _id: email,
+                access: {$elemMatch: {$eq: 'transient.academic-staff.apply'}}
+            })
             if (deletedCount > 0) {
                 deleted.push(email)
             }
