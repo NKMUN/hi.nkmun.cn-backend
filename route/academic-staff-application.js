@@ -332,6 +332,44 @@ route.post('/academic-staff-applications/:id/',
     }
 )
 
+route.post('/academic-staff-applications/actions/remove_unnecessary_users',
+    AccessFilter('academic-director', 'admin'),
+    async ctx => {
+        async function getUserEmailsByQuery(query) {
+            const results = await ctx.db.collection('academic_staff').find(query, { user: true }).toArray()
+            return results.map($ => $.user)
+        }
+
+        const notSubmitted = await getUserEmailsByQuery({'submitted': {$ne: true}})
+        const pendingDecision = await getUserEmailsByQuery({'submitted': true, 'admission_status': {$exists: false}})
+        const refused = await getUserEmailsByQuery({'admission_status': 'refused'})
+        const admitted = await getUserEmailsByQuery({'admission_status': 'admitted'})
+
+        // multiple entries for one email may exist
+        // should check emails
+        let usersToDelete = new Set([...notSubmitted, ...refused])
+        for (let email of [...pendingDecision, ...admitted]) {
+            usersToDelete.delete(email)
+        }
+
+        let deleted = []
+
+        for (let email of usersToDelete) {
+            const { deletedCount } = await ctx.db.collection('user').deleteOne({ _id: email })
+            if (deletedCount > 0) {
+                deleted.push(email)
+            }
+        }
+
+        ctx.status = 200
+        ctx.body = {
+            ok: true,
+            n_deleted: deleted.length,
+            deleted_users: deleted
+        }
+    }
+)
+
 module.exports = {
     routes: route.routes()
 }
