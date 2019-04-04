@@ -57,6 +57,7 @@ route.get('/schools/',
             id:    '$_id',
             type:  { $ifNull: ['$type', 'school'] },
             name:  { $ifNull: ['$identifier', '$school.name'] },
+            administrative_area: '$school.administrative_area',
             stage: '$stage'
         }
 
