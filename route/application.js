@@ -57,7 +57,8 @@ route.get('/applications/',
             id: '$_id',
             type: { $ifNull: ['$type', 'school'] },
             name: { $ifNull: ['$identifier', '$school.name', ] },
-            processed: { $ifNull: ['$processed', false] }
+            processed: { $ifNull: ['$processed', false] },
+            administrative_area: '$school.administrative_area',
         }
         if (ctx.query.seat)
             projection.seat = '$seat'
