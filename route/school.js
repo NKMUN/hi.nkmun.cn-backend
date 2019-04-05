@@ -7,6 +7,7 @@ const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 const { filterExchange } = require('./exchange')
 const { relinquishQuota, exchangeQuota, setLeaderAttend, syncSeatToQuota } = require('./ng-quota')
+const { writeSchoolOpLog } = require('./op-log')
 
 const IsSchoolSelfOr = (...requiredAccesses) => async (ctx, next) => {
     if ( !ctx.token && await TokenParser(ctx)) {
@@ -178,6 +179,12 @@ route.patch('/schools/:id',
                 return
             }
             await syncSeatToQuota(ctx, ctx.school._id)
+
+            if (field === 'seat.1' || field === 'seat.2') {
+                const stageNum = field[5]
+                await School(ctx)
+                await writeSchoolOpLog(ctx, ctx.school._id, 'seat', `修改名额 ${stageNum}`, {seat: ctx.school.seat[stageNum]})
+            }
         } else {
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.school._id },
@@ -234,6 +241,9 @@ route.post('/schools/:id/seat',
 
             await relinquishQuota(ctx, ctx.school._id, session)
 
+            const sessionName = (ctx.sessions.find(s => s._id === session) || {}).name
+            await writeSchoolOpLog(ctx, ctx.school._id, 'seat', `放弃${-amount}个「${sessionName}」名额`)
+
             processed = true
         }
 
@@ -257,6 +267,7 @@ route.post('/schools/:id/seat',
                 updateQuery
             )
             await setLeaderAttend(ctx, ctx.school._id, leaderAttend)
+            await writeSchoolOpLog(ctx, ctx.school._id, 'seat', `设置领队为 ${leaderAttend ? '参会领队' : '不参会领队'}`)
             processed = true
         }
 
@@ -268,6 +279,7 @@ route.post('/schools/:id/seat',
                 { _id: ctx.school._id, stage: '1.relinquishment' },
                 { $set: { stage: '1.exchange' } }
             )
+            await writeSchoolOpLog(ctx, ctx.school._id, 'seat', '结束名额放弃')
             processed = matchedCount === 1
         }
 
@@ -305,6 +317,7 @@ route.post('/schools/:id/seat',
                 { _id: ctx.school._id },
                 { $set: { stage: '1.reservation' } }
             )
+            await writeSchoolOpLog(ctx, ctx.school._id, 'seat', '结束名额交换')
             processed = true
         }
 
@@ -320,6 +333,7 @@ route.post('/schools/:id/seat',
                 ctx.body = { error: 'invalid stage to confirm attendance' }
                 return
             }
+            await writeSchoolOpLog(ctx, ctx.school._id, 'seat', '确认代表信息')
             processed = true
         }
 
@@ -384,6 +398,8 @@ route.delete('/schools/:id',
 
         await ctx.db.collection('school').deleteOne({ _id: { $eq: id } })
 
+        await writeSchoolOpLog(ctx, ctx.school._id, 'nuke', `一键退会：${ctx.school.identifier || ctx.school.school.name} (${ctx.school._id})`)
+
         ctx.status = 200
         ctx.body = { message: 'nuked' }
     }
@@ -417,6 +433,7 @@ route.post('/schools/:id/progress',
                     { _id: ctx.params.id, stage: ctx.school.stage[0]+'.reservation' },
                     { $set: { stage: ctx.school.stage.replace('.reservation', '.payment')} }
                 )
+                await writeSchoolOpLog(ctx, ctx.school._id, 'progress', `确认酒店预定 ${ctx.school.stage[0]}`)
                 ctx.status = 200
                 ctx.body = { message: 'ok' }
             } else {
@@ -459,6 +476,7 @@ route.post('/schools/:id/progress',
                 { school: ctx.school._id, active: false, round: '2' },
                 { $set: { active: true } }
             )
+            await writeSchoolOpLog(ctx, ctx.school._id, 'progress', '分配追加轮名额', { seat: school.seat['2pre'] })
             ctx.status = 200
             ctx.body = { ok: 1 }
         }
@@ -471,6 +489,7 @@ route.post('/schools/:id/progress',
                     { _id: ctx.params.id, stage: ctx.school.stage },
                     { $set: { stage: nextStage } }
                 )
+                await writeSchoolOpLog(ctx, ctx.school._id, 'progress', `上传缴费凭证 ${ctx.school.stage[0]}`)
             } else {
                 ctx.status = 412
                 ctx.body = { error: 'incorrect school stage' }
@@ -522,6 +541,8 @@ route.post('/schools/:id/progress',
                                 })
                             }
                         }
+
+                await writeSchoolOpLog(ctx, ctx.school._id, 'progress', '开始代表信息录入')
                 ctx.status = 200
                 ctx.body = { message: 'ok', nextStage: '3.confirm' }
                 return
@@ -544,6 +565,7 @@ route.post('/schools/:id/progress',
                     withdraw: false,
                     ...representative
                 })
+                await writeSchoolOpLog(ctx, ctx.school._id, 'progress', representative.confirmed ? '个人代表信息已录入，完成参会报名' : '开始个人代表信息录入')
                 ctx.status = 200
                 ctx.body = { message: 'ok', nextStage }
                 return

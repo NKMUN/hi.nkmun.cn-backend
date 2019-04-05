@@ -64,6 +64,8 @@ route.post('/initialize',
             price: 0
         })
 
+        await db.collection('op-log').createIndex({ school: 1, workflow: 1 })
+
         ctx.status = 200
         ctx.body = {}
     }

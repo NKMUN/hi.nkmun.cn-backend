@@ -4,6 +4,7 @@ const { IsSchoolSelfOr, School } = require('./school')
 const getPayload = require('./lib/get-payload')
 const { LogOp } = require('../lib/logger')
 const { toId, newId } = require('../lib/id-util')
+const { writeSchoolOpLog } = require('./op-log')
 
 const Route_GetReservationById = async ctx => {
     let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid, school: ctx.params.id })
@@ -103,6 +104,8 @@ route.post('/schools/:id/reservations/',
             return
         }
 
+        const roomshareWillBeConfirmed = ctx.hasAccessTo('staff.accommodation')
+
         const {
             insertedId
         } = await ctx.db.collection('reservation').insertOne({
@@ -115,9 +118,56 @@ route.post('/schools/:id/reservations/',
             created: new Date(),
             roomshare: roomshare
                 ? { school: roomshare,
-                    state: ctx.hasAccessTo('staff.accommodation') ? 'accepted' : 'pending' }
+                    state: roomshareWillBeConfirmed ? 'accepted' : 'pending' }
                 : null
         })
+
+        // generate op-log entry
+        const hotelInfo = await ctx.db.collection('hotel').findOne({ _id: hotel })
+        const roomshareRecipient = roomshare && roomshareWillBeConfirmed
+            ? await ctx.db.collection('school').findOne({ _id: roomshare })
+            : null
+        const roomshareRecipientIdentifier = roomshareRecipient && (roomshareRecipient.identifier || roomshareRecipient.school.name)
+        await writeSchoolOpLog(
+            ctx,
+            ctx.school._id,
+            'reservation',
+            `酒店预订(${ctx.school.stage[0]})：${hotelInfo.name} ${hotelInfo.type} (${insertedId})`,
+            { hotel: {
+                id: hotelInfo._id,
+                name: hotelInfo.name,
+                type: hotelInfo.type,
+                checkIn,
+                checkOut,
+                roomshare: roomshareWillBeConfirmed
+                    ? {
+                        id: roomshare,
+                        identifier: roomshareRecipientIdentifier
+                    }
+                    : null
+            } }
+        )
+
+        if (roomshareRecipient) {
+            const initiatingSchoolIdentifier = ctx.school.identifier || ctx.school.school.name
+            await writeSchoolOpLog(
+                ctx,
+                ctx.school._id,
+                'roomshare',
+                `获得拼房(${ctx.school.stage[0]})：来自「${initiatingSchoolIdentifier}」${hotelInfo.name} ${hotelInfo.type} (${insertedId})`,
+                { hotel: {
+                    id: hotelInfo._id,
+                    name: hotelInfo.name,
+                    type: hotelInfo.type,
+                    checkIn,
+                    checkOut,
+                    initiatingSchool: {
+                        id: ctx.school._id,
+                        identifier: initiatingSchoolIdentifier
+                    }
+                } }
+            )
+        }
 
         ctx.status = 200
         ctx.params.rid = insertedId
@@ -269,12 +319,12 @@ route.patch('/schools/:id/reservations/:rid',
         } = getPayload(ctx)
 
         const reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
-        const hotel = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
+        const hotelInfo = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
 
         // verify checkIn / checkOut
         if (checkIn || checkOut) {
-            const valid = (checkIn ? new Date(checkIn).getTime() >= new Date(hotel.notBefore).getTime() : true)
-                       && (checkOut ? new Date(checkOut).getTime() <= new Date(hotel.notAfter).getTime() : true)
+            const valid = (checkIn ? new Date(checkIn).getTime() >= new Date(hotelInfo.notBefore).getTime() : true)
+                       && (checkOut ? new Date(checkOut).getTime() <= new Date(hotelInfo.notAfter).getTime() : true)
             if (!valid) {
                 ctx.status = 400
                 ctx.body = { error: 'bad request', message: 'checkIn or checkOut beyond hotel time limits' }
@@ -337,6 +387,95 @@ route.patch('/schools/:id/reservations/:rid',
             { $set: update }
         )
 
+        // generate op-log entry
+        const postUpdateReservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
+        const roomshareRecipient = postUpdateReservation.roomshare && postUpdateReservation.roomshare.state === 'accepted'
+            ? await ctx.db.collection('school').findOne({ _id: postUpdateReservation.roomshare.school })
+            : null
+        const roomshareRecipientIdentifier = roomshareRecipient && (roomshareRecipient.identifier || roomshareRecipient.school.name)
+        await writeSchoolOpLog(
+            ctx,
+            ctx.school._id,
+            'reservation',
+            `修改酒店预订(${ctx.school.stage[0]})：${hotelInfo.name} ${hotelInfo.type} (${ctx.params.rid})`,
+            { hotel: {
+                id: hotelInfo._id,
+                name: hotelInfo.name,
+                type: hotelInfo.type,
+                checkIn: postUpdateReservation.checkIn,
+                checkOut: postUpdateReservation.checkOut,
+                roomshare: roomshareRecipient
+                    ? { id: roomshareRecipient._id, identifier: roomshareRecipientIdentifier }
+                    : null
+            } }
+        )
+
+        // only staff can change roomshare after peer confirmation
+        const beforeUpdateRoomshareRecipientId = reservation.roomshare && reservation.roomshare.state === 'accepted' ? reservation.roomshare.school : null
+        const postUpdateRoomshareRecipientId = roomshareRecipient ? roomshareRecipient._id : null
+        const initiatingSchoolIdentifier = ctx.school.identifier || ctx.school.school.name
+
+        if (beforeUpdateRoomshareRecipientId !== postUpdateRoomshareRecipientId) {
+            if (beforeUpdateRoomshareRecipientId) {
+                await writeSchoolOpLog(
+                    ctx,
+                    beforeUpdateRoomshareRecipientId,
+                    'roomshare',
+                    `拼房被撤销(${ctx.school.stage[0]})：${hotelInfo.name} ${hotelInfo.type} (${ctx.params.rid})`,
+                    { hotel: {
+                        id: hotelInfo._id,
+                        name: hotelInfo.name,
+                        type: hotelInfo.type,
+                        checkIn: postUpdateReservation.checkIn,
+                        checkOut: postUpdateReservation.checkOut,
+                        initiatingSchool: {
+                            id: ctx.school._id,
+                            identifier: initiatingSchoolIdentifier
+                        }
+                    } }
+                )
+            }
+            if (postUpdateRoomshareRecipientId) {
+                await writeSchoolOpLog(
+                    ctx,
+                    postUpdateRoomshareRecipientId,
+                    'roomshare',
+                    `获得拼房(${ctx.school.stage[0]})：${hotelInfo.name} ${hotelInfo.type} (${ctx.params.rid})`,
+                    { hotel: {
+                        id: hotelInfo._id,
+                        name: hotelInfo.name,
+                        type: hotelInfo.type,
+                        checkIn: postUpdateReservation.checkIn,
+                        checkOut: postUpdateReservation.checkOut,
+                        initiatingSchool: {
+                            id: ctx.school._id,
+                            identifier: initiatingSchoolIdentifier
+                        }
+                    } }
+                )
+            }
+        } else {
+            if (postUpdateRoomshareRecipientId) {
+                await writeSchoolOpLog(
+                    ctx,
+                    postUpdateRoomshareRecipientId,
+                    'roomshare',
+                    `拼房信息被修改(${ctx.school.stage[0]})：${hotelInfo.name} ${hotelInfo.type} (${ctx.params.rid})`,
+                    { hotel: {
+                        id: hotelInfo._id,
+                        name: hotelInfo.name,
+                        type: hotelInfo.type,
+                        checkIn: postUpdateReservation.checkIn,
+                        checkOut: postUpdateReservation.checkOut,
+                        initiatingSchool: {
+                            id: ctx.school._id,
+                            identifier: initiatingSchoolIdentifier
+                        }
+                    } }
+                )
+            }
+        }
+
         // return result reservation
         await Route_GetReservationById(ctx)
     }
@@ -344,6 +483,7 @@ route.patch('/schools/:id/reservations/:rid',
 
 route.delete('/schools/:id/reservations/:rid',
     IsSchoolSelfOr('staff.accommodation'),
+    School,
     LogOp('reservation', 'delete'),
     async ctx => {
         let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
@@ -359,6 +499,50 @@ route.delete('/schools/:id/reservations/:rid',
             { _id: reservation.hotel },
             { $inc: { available: 1 } }
         )
+
+        const hotelInfo = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
+        const roomshareRecipient = reservation.roomshare && reservation.roomshare.state === 'accepted'
+            ? await ctx.db.collection('school').findOne({ _id: reservation.roomshare.school })
+            : null
+        const roomshareRecipientIdentifier = roomshareRecipient && (roomshareRecipient.identifier || roomshareRecipient.school.name)
+        await writeSchoolOpLog(
+            ctx,
+            ctx.school._id,
+            'reservation',
+            `取消酒店预订(${ctx.school.stage[0]})：${hotelInfo.name} ${hotelInfo.type} (${ctx.params.rid})`,
+            { hotel: {
+                id: hotelInfo._id,
+                name: hotelInfo.name,
+                type: hotelInfo.type,
+                checkIn: reservation.checkIn,
+                checkOut: reservation.checkOut,
+                roomshare: roomshareRecipient
+                    ? { id: roomshareRecipient._id, identifier: roomshareRecipientIdentifier }
+                    : null
+            } }
+        )
+
+        if (roomshareRecipient) {
+            const initiatorId = ctx.school._id
+            const initiatorIdentifier = ctx.school.identifier || ctx.school.school.name
+            await writeSchoolOpLog(
+                ctx,
+                roomshareRecipient._id,
+                'roomshare',
+                `拼房被撤销：「${initiatorIdentifier}」 的 ${hotelInfo.name} ${hotelInfo.type}`,
+                { hotel: {
+                    id: hotelInfo._id,
+                    name: hotelInfo.name,
+                    type: hotelInfo.type,
+                    checkIn: reservation.checkIn,
+                    checkOut: reservation.checkOut,
+                    initiatingSchool: {
+                        id: initiatorId,
+                        identifier: initiatorIdentifier
+                    }
+                } }
+            )
+        }
 
         ctx.status = 200
         ctx.body = { message: 'deleted' }
@@ -394,8 +578,49 @@ route.post('/schools/:id/roomshare/:rid',
             const reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
             const hotel = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
             // roomshare reservation is stored on initiating school
-            const school = await ctx.db.collection('school').findOne({ _id: ctx.params.id })
-            const roomshareSchool = await ctx.db.collection('school').findOne({ _id: reservation.school })
+            const recipientSchool = await ctx.db.collection('school').findOne({ _id: ctx.params.id })
+            const initiatingSchool = await ctx.db.collection('school').findOne({ _id: reservation.school })
+
+            // generate op-log entry
+            const initiatingSchoolIdentifier = initiatingSchool.identifier || initiatingSchool.school.name
+            await writeSchoolOpLog(
+                ctx,
+                ctx.params.id,
+                'roomshare',
+                `接受拼房：来自「${initiatingSchoolIdentifier}」的「${hotel.name} ${hotel.type}」 (${ctx.params.rid})`,
+                { hotel: {
+                    id: hotel._id,
+                    name: hotel.name,
+                    type: hotel.type,
+                    checkIn: reservation.checkIn,
+                    checkOut: reservation.checkOut,
+                    initiatingSchool: {
+                        id: initiatingSchool._id,
+                        identifier: initiatingSchoolIdentifier
+                    }
+                } }
+            )
+
+            const recipientSchoolIdentifier = recipientSchool.identifier || recipientSchool.school.name
+            await writeSchoolOpLog(
+                ctx,
+                initiatingSchool._id,
+                'roomshare',
+                `拼房被接受：与「${recipientSchoolIdentifier}」拼房「${hotel.name} ${hotel.type}」 (${ctx.params.rid})`,
+                { hotel: {
+                    id: hotel._id,
+                    name: hotel.name,
+                    type: hotel.type,
+                    checkIn: reservation.checkIn,
+                    checkOut: reservation.checkOut,
+                    roomshare: {
+                        id: recipientSchool._id,
+                        identifier: recipientSchoolIdentifier
+                    }
+                } }
+            )
+
+
             // NOTE: match format returned by GET /reservations/
             ctx.status = 200
             ctx.body = {
@@ -413,13 +638,13 @@ route.post('/schools/:id/roomshare/:rid',
                     notAfter: hotel.notAfter
                 },
                 school: {
-                    id: school._id,
-                    name: school.identifier || school.school.name
+                    id: recipientSchool._id,
+                    name: recipientSchool.identifier || recipientSchool.school.name
                 },
                 roomshare: {
                     school: {
-                        id: roomshareSchool._id,
-                        name: roomshareSchool.identifier || roomshareSchool.school.name
+                        id: initiatingSchool._id,
+                        name: initiatingSchool.identifier || initiatingSchool.school.name
                     },
                     state: reservation.roomshare.state
                 }

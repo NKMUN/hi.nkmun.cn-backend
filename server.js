@@ -56,6 +56,7 @@ module.exports = {
         app.use( require('./route/dais').routes )
         app.use( require('./route/academic-staff-application').routes )
         app.use( require('./route/file').routes )
+        app.use( require('./route/op-log').routes )
 
         let server = createServer( app.callback() )
                      .listen(port, host, () => {

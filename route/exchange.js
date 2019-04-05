@@ -4,6 +4,8 @@ const { AccessFilter } = require('./auth')
 const { toId, newId } = require('../lib/id-util')
 const { LogOp } = require('../lib/logger')
 const { exchangeQuota } = require('./ng-quota')
+const { writeSchoolOpLog } = require('./op-log')
+const { Sessions } = require('./session')
 
 // either from or to should be school itself
 async function hasAccess(ctx, from, to) {
@@ -83,6 +85,7 @@ route.get('/exchanges/',
 route.post('/exchanges/',
     AccessFilter('leader'),
     LogOp('exchange', 'submit'),
+    Sessions,
     async ctx => {
         let {
             token: { school: schoolId }
@@ -113,6 +116,7 @@ route.post('/exchanges/',
             [`seat.1.${targetSession}`]: { $gte: 1 }
         }, {
             _id: 1,
+            identifier: 1,
             school: 1,
             seat: 1
         })
@@ -149,7 +153,15 @@ route.post('/exchanges/',
             state: false
         }
 
-        await ctx.db.collection('exchange').insert(exchange)
+        const {
+            insertedId
+        } = await ctx.db.collection('exchange').insertOne(exchange)
+
+        // generate op-log
+        const initiatingSessionName = ctx.sessions.find(s => s._id === selfSession).name
+        const targetSessionName = ctx.sessions.find(s => s._id === targetSession).name
+        const targetSchoolIdentifier = to.identifier || to.school.name
+        await writeSchoolOpLog(ctx, from._id, 'exchange', `发起名额交换：用「${initiatingSessionName}」交换「${targetSchoolIdentifier}」的「${targetSessionName}」 (${insertedId})`)
 
         ctx.status = 200
         ctx.body = toId(exchange)
@@ -160,6 +172,7 @@ route.post('/exchanges/:id',
     AccessFilter('leader'),
     LogOp('exchange', 'process'),
     Exchange,
+    Sessions,
     async ctx => {
         let {
             accept,
@@ -274,6 +287,16 @@ route.post('/exchanges/:id',
                 { seat: 1 }
             )
 
+            // generate op-log
+            const targetSessionName = ctx.sessions.find(s => s._id === ctx.exchange.to.session).name
+            const targetSchool = await ctx.db.collection('school').findOne({ _id: ctx.exchange.to.school })
+            const targetSchoolIdentifier = targetSchool.identifier || targetSchool.school.name
+            const initiatingSessionName = ctx.sessions.find(s => s._id === ctx.exchange.from.session).name
+            const initiatingSchool = await ctx.db.collection('school').findOne({ _id: ctx.exchange.from.school })
+            const initiatingSchoolIdentifier = initiatingSchool.identifier || initiatingSchool.school.name
+            await writeSchoolOpLog(ctx, ctx.exchange.from.school, 'exchange', `名额交换被接受：用「${initiatingSessionName}」交换「${targetSchoolIdentifier}」的「${targetSessionName}」 (${ctx.exchange._id})`)
+            await writeSchoolOpLog(ctx, ctx.exchange.to.school, 'exchange', `接受名额交换：「${initiatingSchoolIdentifier}」用「${initiatingSessionName}」交换「${targetSessionName}」 (${ctx.exchange._id})`)
+
             ctx.status = 200
             ctx.body = currentSeat
             return
@@ -292,6 +315,13 @@ route.post('/exchanges/:id',
                 { _id: fromSchool },
                 { seat: 1 }
             )
+
+            // generate op-log
+            const initiatingSessionName = ctx.sessions.find(s => s._id === ctx.exchange.from.session).name
+            const targetSessionName = ctx.sessions.find(s => s._id === ctx.exchange.to.session).name
+            const targetSchool = await ctx.db.collection('school').findOne({ _id: ctx.exchange.to.school })
+            const targetSchoolIdentifier = targetSchool.identifier || targetSchool.school.name
+            await writeSchoolOpLog(ctx, ctx.exchange.from.school, 'exchange', `取消名额交换：用「${initiatingSessionName}」交换「${targetSchoolIdentifier}」的「${targetSessionName}」 (${ctx.exchange._id})`)
 
             ctx.status = 200
             ctx.body = currentSeat
