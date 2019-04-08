@@ -1,10 +1,9 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const { IsSchoolSelfOr, School } = require('./school')
+const { IsSchoolSelfOr } = require('./school')
 const getPayload = require('./lib/get-payload')
-const { LogOp } = require('../lib/logger')
-const { toId, newId } = require('../lib/id-util')
+const { toId } = require('../lib/id-util')
 
 const AGGREGATE_REPRESENTATIVES = [
     { $lookup: {
@@ -121,7 +120,6 @@ route.get('/schools/:id/representatives/:rid',
 
 route.patch('/schools/:id/representatives/:rid',
     IsSchoolSelfOr('staff', 'finance'),
-    LogOp('representative', 'update'),
     async ctx => {
         let payload = getPayload(ctx)
         // certain fields are not updatable

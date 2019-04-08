@@ -2,8 +2,7 @@ const Router = require('koa-router')
 const route = new Router()
 const { IsSchoolSelfOr, School } = require('./school')
 const getPayload = require('./lib/get-payload')
-const { LogOp } = require('../lib/logger')
-const { toId, newId } = require('../lib/id-util')
+const { newId } = require('../lib/id-util')
 const { writeSchoolOpLog } = require('./op-log')
 
 const Route_GetReservationById = async ctx => {
@@ -51,7 +50,6 @@ route.get('/schools/:id/reservations/:rid',
 
 route.post('/schools/:id/reservations/',
     IsSchoolSelfOr('staff.accommodation'),
-    LogOp('reservation', 'reserve'),
     School,
     async ctx => {
         if ( ! ctx.hasAccessTo('staff.accommodation')
@@ -484,7 +482,6 @@ route.patch('/schools/:id/reservations/:rid',
 route.delete('/schools/:id/reservations/:rid',
     IsSchoolSelfOr('staff.accommodation'),
     School,
-    LogOp('reservation', 'delete'),
     async ctx => {
         let reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
 

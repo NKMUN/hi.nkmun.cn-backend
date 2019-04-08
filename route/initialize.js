@@ -1,11 +1,9 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const { LogOp } = require('../lib/logger')
 
 route.post('/initialize',
     AccessFilter('admin'),
-    LogOp('init', 'initialize'),
     async ctx => {
         const { db } = ctx
 

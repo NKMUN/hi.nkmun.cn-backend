@@ -2,7 +2,6 @@ const Router = require('koa-router')
 const route = new Router()
 
 const getPayload = require('./lib/get-payload')
-const { LogOp } = require('../lib/logger')
 const { sign } = require('jsonwebtoken')
 const { newId } = require('../lib/id-util')
 
@@ -10,10 +9,9 @@ const AUTHORIZATION_PREFIX = 'Bearer '
 const Password = require('../lib/password')
 const JWT_OPTS = { expiresIn: '6h' }
 
-const { AccessFilter, TokenParser, InjectHasAccessTo } = require('./auth')
+const { AccessFilter, InjectHasAccessTo } = require('./auth')
 
 route.post('/login',
-    LogOp('auth', 'login'),
     async (ctx) => {
         const { db, JWT_SECRET } = ctx
         const { user, password } = getPayload(ctx)
@@ -76,7 +74,7 @@ route.get('/users/',
             reserved: $.reserved,
             access: $.access,
             school: $.school && $.school.length > 0
-                ? { id: $.school[0]._id, name: $.school[0].school.name }
+                ? { id: $.school[0]._id, name: $.school[0].identifier || $.school[0].school.name }
                 : null,
             session: $.session && $.session.length > 0
                 ? { id: $.session[0]._id, name: $.session[0].name }
@@ -87,7 +85,6 @@ route.get('/users/',
 
 route.patch('/users/:id',
     AccessFilter('admin'),
-    LogOp('user', 'patch'),
     async ctx => {
         const {
             password,
@@ -138,7 +135,6 @@ route.patch('/users/:id',
 
 // Unified Registration
 route.post('/users/',
-    LogOp('user', 'register'),
     InjectHasAccessTo,
     async ctx => {
         const { email, password, access, session: _session, school: _school } = getPayload(ctx)

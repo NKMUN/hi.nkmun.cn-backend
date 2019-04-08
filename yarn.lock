@@ -1074,12 +1074,6 @@ keygrip@~1.0.3:
   resolved "https://registry.npmjs.org/keygrip/-/keygrip-1.0.3.tgz#399d709f0aed2bab0a059e0cdd3a5023a053e1dc"
   integrity sha512-/PpesirAIfaklxUzp4Yb7xBper9MwP6hNRA6BGGUFCgbJ+BM5CKBtsoxinNXkLHAr+GXS1/lSlF2rP7cv5Fl+g==
 
-koa-accesslog@0.0.2:
-  version "0.0.2"
-  resolved "http://registry.npm.taobao.org/koa-accesslog/download/koa-accesslog-0.0.2.tgz#361cd2a4dca3963fac1391c32ad1840e46b5ae1e"
-  dependencies:
-    moment "^2.8.4"
-
 koa-body@^2.0.0:
   version "2.6.0"
   resolved "https://registry.npmjs.org/koa-body/-/koa-body-2.6.0.tgz#8ed7a192a64a38df610a986342d1801855641a1d"
@@ -1306,10 +1300,6 @@ mkdirp@^0.5.0, mkdirp@^0.5.1:
   resolved "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.1.tgz#30057438eac6cf7f8c4767f38648d6697d75c903"
   dependencies:
     minimist "0.0.8"
-
-moment@^2.8.4:
-  version "2.18.1"
-  resolved "http://registry.npm.taobao.org/moment/download/moment-2.18.1.tgz#c36193dd3ce1c2eed2adb7c802dbbc77a81b1c0f"
 
 mongodb-core@2.1.20:
   version "2.1.20"

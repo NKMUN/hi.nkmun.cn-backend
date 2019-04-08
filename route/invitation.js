@@ -2,7 +2,6 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
-const { LogOp } = require('../lib/logger')
 const ShortId = require('shortid')
 const { Mailer } = require('./mailer')
 const { sign } = require('jsonwebtoken')
@@ -10,7 +9,6 @@ const { newId } = require('../lib/id-util')
 
 route.post('/invitations/',
     AccessFilter('staff.application'),
-    LogOp('invitation', 'create'),
     Mailer,
     async ctx => {
         const { school } = getPayload(ctx)

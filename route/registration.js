@@ -1,14 +1,11 @@
 const Router = require('koa-router')
 const route = new Router()
 const getPayload = require('./lib/get-payload')
-const { LogOp } = require('../lib/logger')
-const { Mailer } = require('./mailer')
 const { TokenParser } = require('./auth')
 const { setQuota } = require('./ng-quota')
 
 route.post('/registration',
     TokenParser,
-    LogOp('registration', 'register'),
     async ctx => {
         const { db, token } = ctx
         const {

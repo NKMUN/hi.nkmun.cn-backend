@@ -2,7 +2,6 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const { toId, newId } = require('../lib/id-util')
-const { LogOp } = require('../lib/logger')
 const { exchangeQuota } = require('./ng-quota')
 const { writeSchoolOpLog } = require('./op-log')
 const { Sessions } = require('./session')
@@ -84,7 +83,6 @@ route.get('/exchanges/',
 
 route.post('/exchanges/',
     AccessFilter('leader'),
-    LogOp('exchange', 'submit'),
     Sessions,
     async ctx => {
         let {
@@ -170,7 +168,6 @@ route.post('/exchanges/',
 
 route.post('/exchanges/:id',
     AccessFilter('leader'),
-    LogOp('exchange', 'process'),
     Exchange,
     Sessions,
     async ctx => {

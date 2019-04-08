@@ -4,7 +4,6 @@ const { AccessFilter, TokenParser } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { Sessions } = require('./session')
 const { toId, newId } = require('../lib/id-util')
-const { LogOp } = require('../lib/logger')
 const { filterExchange } = require('./exchange')
 const { relinquishQuota, exchangeQuota, setLeaderAttend, syncSeatToQuota } = require('./ng-quota')
 const { writeSchoolOpLog } = require('./op-log')
@@ -132,7 +131,6 @@ route.get('/schools/:id/seat',
 route.patch('/schools/:id',
     AccessFilter('staff', 'finance', 'admin'),
     School,
-    LogOp('school', 'patch'),
     async ctx => {
         const field = ctx.query.field
         if (   !field
@@ -200,7 +198,6 @@ route.patch('/schools/:id',
 
 route.post('/schools/:id/seat',
     IsSchoolSelfOr('staff'),
-    LogOp('school', 'seat'),
     School,
     Sessions,
     async ctx => {
@@ -353,7 +350,6 @@ route.post('/schools/:id/seat',
 route.delete('/schools/:id',
     AccessFilter('staff.nuke'),
     School,
-    LogOp('school', 'nuke'),
     async ctx => {
         let id = ctx.school._id
 

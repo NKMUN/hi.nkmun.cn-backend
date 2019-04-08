@@ -2,27 +2,40 @@
 
 const program = require('commander')
 
+const {
+    DEFAULT_PORT = '8002',
+    DEFAULT_MONGO = 'mongodb://localhost:27017/nkmun',
+    DEFAULT_SECRET = 'secret'
+} = process.env
+
 program
-  .version('0.1.0')
-  .option('-p, --port <port>', 'Port to bind, default: 8001', parseInt)
-  .option('-h, --host <addr>', 'Host address to bind, default: all', String)
-  .option('--db, <connStr>',   'Database, default: mongodb://localhost:27017/nkmun', String)
-  .option('-s, --secret <secret>', 'Secret used to sign/verify JWT', String)
-  .option('--postie <url>', 'Postie endpoint', String)
-  .parse(process.argv)
+    .version('0.1.0')
+    .option('-p, --port <port>', `Port to bind: [${DEFAULT_PORT}]`, s => parseInt(s, 10))
+    .option('--db, <connStr>',   `Mongodb connection: [${DEFAULT_MONGO}] `, String)
+    .option('-s, --secret <secret>', 'Secret used to sign/verify JWT', String)
+    .option('--postie <url>', 'Postie endpoint', String)
+    .parse(process.argv)
 
 // server startup params
-let {
-    port = 8001,
-    host = undefined,
-    db = 'mongodb://localhost:27017/nkmun',
-    secret = 'secret',
+const {
+    port = parseInt(DEFAULT_PORT, 10),
+    db = DEFAULT_MONGO,
+    secret = DEFAULT_SECRET,
     postie = null
 } = program
 
-require('../server').create({ host, port, db, secret, postie })
-.catch( e => {
-    console.error(e.message)
-    console.error(e.stack)
-    process.exit(-1)
-})
+require('../server').create({ port, db, secret, postie })
+    .then(
+        server => {
+            process.on('SIGTERM', _ => {
+                console.error('SIGTERM received, stopping.')
+                server.close()
+            })
+        },
+        err => {
+            console.error(err.message)
+            console.error(err.stack)
+            process.exit(-1)
+        }
+    )
+

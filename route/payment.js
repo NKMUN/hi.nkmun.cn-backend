@@ -2,16 +2,12 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const { IsSchoolSelfOr, School } = require('./school')
-const { LogOp } = require('../lib/logger')
-const { toId, newId } = require('../lib/id-util')
-const { readFile, unlink } = require('mz/fs')
-const { getBillingDetail } = require('./billing')
+const { newId } = require('../lib/id-util')
 const { Mailer } = require('./mailer')
 const getPayload = require('./lib/get-payload')
 
 route.post('/schools/:id/payments/',
     IsSchoolSelfOr('finance'),
-    LogOp('payment', 'payment'),
     School,
     async ctx => {
         const { stage } = ctx.school
@@ -60,7 +56,6 @@ route.post('/schools/:id/payments/',
 route.patch('/schools/:id/payments/',
     AccessFilter('finance'),
     School,
-    LogOp('payment', 'review'),
     Mailer,
     async ctx => {
         if ( ! ctx.school.stage.endsWith('.paid') ) {
@@ -77,7 +72,6 @@ route.patch('/schools/:id/payments/',
         }
 
         if (confirm) {
-            await LogOp('payment', 'confirm')(ctx)
             await ctx.db.collection('payment').updateOne(
                 { school: ctx.params.id, active: true },
                 { $set: { active: false } }
@@ -96,7 +90,6 @@ route.patch('/schools/:id/payments/',
         }
 
         if (reject) {
-            await LogOp('payment', 'reject')(ctx)
             await ctx.db.collection('school').updateOne(
                 { _id: ctx.params.id },
                 { $set: { stage: `${ctx.school.stage[0]}.payment`, last_msg: `付款未通过审核：${reason}` } }

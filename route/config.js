@@ -1,8 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const { Sessions } = require('./session')
-const { LogOp } = require('../lib/logger')
 const getPayload = require('./lib/get-payload')
 const { Mailer } = require('./mailer')
 
@@ -99,14 +97,12 @@ route.get('/config/academic-staff-application', ReturnConfig('academic-staff-app
 
 route.put('/config/academic-staff-application',
     AccessFilter('admin', 'academic-director'),
-    LogOp('config', 'write'),
     PutConfig('academic-staff-application'),
     ReturnConfig('academic-staff-application')
 )
 
 route.put('/config/:id',
     AccessFilter('admin'),
-    LogOp('config', 'write'),
     async (ctx, next) => PutConfig(ctx.params.id)(ctx, next),
     async ctx => ReturnConfig(ctx.params.id)(ctx)
 )

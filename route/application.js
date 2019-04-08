@@ -4,11 +4,9 @@ const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
 const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
-const { LogOp } = require('../lib/logger')
 
 route.post('/applications/',
     Config,
-    LogOp('application', 'submit'),
     async ctx => {
         let payload = getPayload(ctx)
 
@@ -90,7 +88,6 @@ route.get('/applications/:id',
 
 route.patch('/applications/:id',
     AccessFilter('staff.application'),
-    LogOp('application', 'seat-alloc'),
     async ctx => {
         let {
             modifiedCount
@@ -111,7 +108,6 @@ route.patch('/applications/:id',
 
 route.delete('/applications/:id',
     AccessFilter('staff.application.nuke'),
-    LogOp('application', 'nuke'),
     async ctx => {
         let {
             deletedCount
@@ -129,7 +125,6 @@ route.delete('/applications/:id',
 
 route.post('/individual-applications/',
     Config,
-    LogOp('application', 'submit'),
     async ctx => {
         let payload = getPayload(ctx)
 

@@ -1,10 +1,8 @@
 const Router = require('koa-router')
 const route = new Router()
-const { AccessFilter, TokenParser } = require('./auth')
+const { AccessFilter } = require('./auth')
 const getPayload = require('./lib/get-payload')
-const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
-const { LogOp } = require('../lib/logger')
 
 async function getHotel(ctx, id) {
     return toId( await ctx.db.collection('hotel').findOne({ _id: id }) )
