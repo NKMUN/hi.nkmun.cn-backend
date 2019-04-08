@@ -1,7 +1,7 @@
 FROM node:alpine
 LABEL maintainer="NKMUN <webmaster@nkmun.cn>"
 
-ENV DEFAULT_MONGO="mongodb://mongo/hikaru"
+ENV DEFAULT_MONGO="mongodb://mongo/nkmun"
 ENV TZ="Asia/Shanghai"
 ENV NODE_ENV=production
 
