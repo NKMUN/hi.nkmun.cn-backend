@@ -1,0 +1,18 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node:lts
+    environment:
+      NK_HOST: root@nkmun.cn
+      BUILD_PREFIX: hi-nkmun-backend
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: docker build -t hi-nkmun:${CIRCLE_SHA1} .
+      - run: docker save hi-nkmun:${CIRCLE_SHA1} | gzip -9 > /tmp/docker-image.tar.gz
+      - store_artifacts:
+          path: /tmp/docker-image.tar.gz
