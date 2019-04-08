@@ -6,13 +6,26 @@ jobs:
     environment:
       NK_HOST: root@nkmun.cn
       BUILD_PREFIX: hi-nkmun-backend
+      SSH_OPTS: 'UserKnownHostsFile=.circleci/ssh_hosts'
+      PRODUCTION_TARGET: deploy-hi-nkmun.sh
+      TEST_TARGET: deploy-test-hi-nkmun.sh
 
     working_directory: ~/repo
 
     steps:
       - checkout
       - setup_remote_docker
-      - run: docker build -t hi-nkmun:${CIRCLE_SHA1} .
-      - run: docker save hi-nkmun:${CIRCLE_SHA1} | gzip -9 > /tmp/docker-image.tar.gz
-      - store_artifacts:
-          path: /tmp/docker-image.tar.gz
+      - run:
+          name: Preperation
+          command: |
+            echo 'export TAG="${BUILD_PREFIX}:$(git rev-parse --short HEAD)"' >> $BASH_ENV
+            echo 'export TARGET="$( [ $CIRCLE_BRANCH == master ] && echo $PRODUCTION_TARGET || echo $TEST_TARGET )"' >> $BASH_ENV
+      - run:
+          name: Build Docker Image
+          command: docker build -t ${TAG} .
+      - run:
+          name: Push to Server
+          command: docker save ${TAG} | gzip -9 | ssh -o ${SSH_OPTS} ${NK_HOST} "gunzip | docker load"
+      - run:
+          name: Deploy
+          command: ssh -o ${SSH_OPTS} ${NK_HOST} "/root/docker/${TARGET} ${TAG}"
