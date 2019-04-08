@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const getPayload = require('./lib/get-payload')
 const { Mailer } = require('./mailer')
 
 async function Config(ctx, next) {
@@ -21,7 +20,7 @@ function PutConfig(id) {
     return async function PutConfig(ctx, next) {
         await ctx.db.collection('meta').updateOne(
             { _id: id },
-            { $set: getPayload(ctx) },
+            { $set: ctx.request.body },
             { upsert: true }
         )
         if (next)
@@ -61,7 +60,7 @@ route.post('/config/mail',
     Mailer,
     async ctx => {
         const { action } = ctx.query
-        const { args } = getPayload(ctx)
+        const { args } = ctx.request.body
         if (action === 'test') {
             if (!args || !String(args).includes('@')) {
                 ctx.status = 400

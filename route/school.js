@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter, TokenParser } = require('./auth')
-const getPayload = require('./lib/get-payload')
 const { Sessions } = require('./session')
 const { toId, newId } = require('../lib/id-util')
 const { filterExchange } = require('./exchange')
@@ -145,7 +144,7 @@ route.patch('/schools/:id',
             return
         }
 
-        const payload = getPayload(ctx)
+        const payload = ctx.request.body
 
         if ( field.startsWith('seat.') ) {
             let stage = ctx.school.stage
@@ -211,7 +210,7 @@ route.post('/schools/:id/seat',
             session,
             round,
             amount = 0,
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         let processed = false
 
@@ -410,7 +409,7 @@ route.post('/schools/:id/progress',
             confirmSecondRound,
             confirmPayment,
             startConfirm
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         if (confirmReservation) {
             const reservations = await ctx.db.collection('reservation').find({ school: ctx.params.id }).toArray()
@@ -631,7 +630,7 @@ route.patch('/schools/:id/individual',
             return
         }
 
-        let payload = getPayload(ctx)
+        let payload = ctx.request.body
         delete payload.school
         delete payload.round
         delete payload.session
@@ -672,7 +671,7 @@ route.post('/schools/:id/individual',
 
         const {
             confirm
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         if (confirm) {
             if (ctx.school.representative.confirmed || ctx.school.stage[0] === '9') {

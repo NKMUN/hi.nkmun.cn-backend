@@ -1,8 +1,9 @@
 const Router = require('koa-router')
 const route = new Router()
-const { readFile, unlink } = require('mz/fs')
-const getPayload = require('./lib/get-payload')
-const { AccessFilter } = require('./auth')
+const { readFile: _readFile, unlink: _unlink } = require('fs')
+const { promisify } = require('util')
+const readFile = promisify(_readFile)
+const unlink = promisify(_unlink)
 const { newId } = require('../lib/id-util')
 const sharp = require('sharp')
 
@@ -24,8 +25,8 @@ route.post('/images/',
             return
         }
 
-        const { path, type, size } = ctx.request.body.files.file
-        const meta = tryParseJSON(ctx.request.body.fields.meta)
+        const { path, type, size } = ctx.request.files.file
+        const meta = tryParseJSON(ctx.request.body.meta)
         if ( size > 20*1024*1024 ) {
             ctx.status = 400
             ctx.body = { error: 'too large' }
@@ -154,8 +155,7 @@ route.get('/images/:id',
             )
             const resultBuffer = await sharp(image.buffer.buffer)
                 .resize(SIZE_MAP[size], SIZE_MAP[size])
-                .max()
-                .withoutEnlargement()
+                .resize({ fit: 'inside', withoutEnlargement: true })
                 .toFormat(FORMAT_MAP[format].format, FORMAT_MAP.options)
                 .toBuffer()
             respondWithImage(ctx, {

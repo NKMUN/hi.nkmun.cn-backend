@@ -1,8 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const getPayload = require('./lib/get-payload')
-const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
 const { UploadFile, GetFile, signFile } = require('./file')
 const { TokenAccessFilter } = require('./auth')
@@ -104,7 +102,7 @@ route.get('/academic-staff-applications/user/:user',
 route.patch('/academic-staff-applications/user/:user',
     IsSelfOrAdmins,
     async ctx => {
-        const payload = getPayload(ctx)
+        const payload = ctx.request.body
         // strip id, _id
         delete payload.id
         delete payload._id
@@ -183,7 +181,7 @@ route.post('/academic-staff-applications/:id/reviews/',
             const currentReview = application.reviews && application.reviews[0]
             const review = {
                 ...(currentReview || {}),
-                ...getPayload(ctx)
+                ...ctx.request.body
             }
             const reviewChanged = !deepEqual(currentReview, review)
             if (reviewChanged) {

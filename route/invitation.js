@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const getPayload = require('./lib/get-payload')
 const ShortId = require('shortid')
 const { Mailer } = require('./mailer')
 const { sign } = require('jsonwebtoken')
@@ -11,7 +10,7 @@ route.post('/invitations/',
     AccessFilter('staff.application'),
     Mailer,
     async ctx => {
-        const { school } = getPayload(ctx)
+        const { school } = ctx.request.body
         const application = await ctx.db.collection('application').findOne({ _id: school })
 
         const invitationCode = ShortId.generate()

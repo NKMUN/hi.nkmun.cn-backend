@@ -1,11 +1,12 @@
 const Router = require('koa-router')
 const route = new Router()
-const { readFile, unlink } = require('mz/fs')
-const getPayload = require('./lib/get-payload')
-const { AccessFilter, TokenAccessFilter } = require('./auth')
+const { readFile: _readFile, unlink: _unlink } = require('fs')
+const { promisify } = require('util')
+const readFile = promisify(_readFile)
+const unlink = promisify(_unlink)
+const { TokenAccessFilter } = require('./auth')
 const { newId } = require('../lib/id-util')
 const { sign } = require('jsonwebtoken')
-const sharp = require('sharp')
 const contentDisposition = require('content-disposition')
 
 function UploadFile(meta = {}) {
@@ -17,7 +18,7 @@ function UploadFile(meta = {}) {
             return
         }
 
-        let { path, type, size, name } = ctx.request.body.files.file
+        let { path, type, size, name } = ctx.request.files.file
         if ( size > 20*1024*1024 ) {
             ctx.status = 400
             ctx.body = { error: 'too large' }

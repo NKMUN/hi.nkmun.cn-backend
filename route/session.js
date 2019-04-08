@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const getPayload = require('./lib/get-payload')
 const { toId, fromId } = require('../lib/id-util')
 
 async function Sessions(ctx, next) {
@@ -25,7 +24,7 @@ route.put('/sessions/',
     AccessFilter('staff'),
     async ctx => {
         await ctx.db.collection('session').remove({})
-        await ctx.db.collection('session').insertMany( getPayload(ctx).map(fromId) )
+        await ctx.db.collection('session').insertMany( ctx.request.body.map(fromId) )
         await Sessions(ctx)
         ctx.status = 200
         ctx.body = ctx.sessions.map( toId )

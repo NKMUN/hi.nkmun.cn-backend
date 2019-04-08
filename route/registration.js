@@ -1,6 +1,5 @@
 const Router = require('koa-router')
 const route = new Router()
-const getPayload = require('./lib/get-payload')
 const { TokenParser } = require('./auth')
 const { setQuota } = require('./ng-quota')
 
@@ -22,7 +21,7 @@ route.post('/registration',
         let {
             leader,
             login
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         let user = {
             _id: login.user,

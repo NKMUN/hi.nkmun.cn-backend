@@ -2,7 +2,6 @@ const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
 const { IsSchoolSelfOr } = require('./school')
-const getPayload = require('./lib/get-payload')
 const { toId } = require('../lib/id-util')
 
 const AGGREGATE_REPRESENTATIVES = [
@@ -121,7 +120,7 @@ route.get('/schools/:id/representatives/:rid',
 route.patch('/schools/:id/representatives/:rid',
     IsSchoolSelfOr('staff', 'finance'),
     async ctx => {
-        let payload = getPayload(ctx)
+        let payload = ctx.request.body
         // certain fields are not updatable
         delete payload.id
         delete payload._id
@@ -202,7 +201,7 @@ route.patch('/representatives/:rid',
         const extraMatch = isDais ? { session: ctx.token.session } : {}
 
         let updatePayload = {}
-        const { note } = getPayload(ctx)
+        const { note } = ctx.request.body
         if (note !== undefined) updatePayload.note = note
 
         const {

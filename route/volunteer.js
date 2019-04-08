@@ -1,16 +1,14 @@
 const Router = require('koa-router')
 const route = new Router()
-const { readFile, unlink } = require('mz/fs')
-const getPayload = require('./lib/get-payload')
 const { AccessFilter } = require('./auth')
-const { newId, toId } = require('../lib/id-util')
+const { toId } = require('../lib/id-util')
 
 route.post('/volunteers/',
     async ctx => {
         let {
             insertedId
         } = await ctx.db.collection('volunteer').insertOne({
-            ...getPayload(ctx),
+            ...ctx.request.body,
             created_at: new Date()
         })
 

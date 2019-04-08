@@ -1,14 +1,13 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const getPayload = require('./lib/get-payload')
 const { Config } = require('./config')
 const { toId, newId } = require('../lib/id-util')
 
 route.post('/applications/',
     Config,
     async ctx => {
-        let payload = getPayload(ctx)
+        let payload = ctx.request.body
 
         if ( ! ctx.config.applySchool ) {
             ctx.status = 409
@@ -93,7 +92,7 @@ route.patch('/applications/:id',
             modifiedCount
         } = await ctx.db.collection('application').updateOne(
             { _id: ctx.params.id },
-            { $set: getPayload(ctx),
+            { $set: ctx.request.body,
               $currentDate: { lastModified: { $type: 'date' } } }
         )
         if (modifiedCount) {
@@ -126,7 +125,7 @@ route.delete('/applications/:id',
 route.post('/individual-applications/',
     Config,
     async ctx => {
-        let payload = getPayload(ctx)
+        let payload = ctx.request.body
 
         if ( ! ctx.config.applyIndividual ) {
             ctx.status = 409

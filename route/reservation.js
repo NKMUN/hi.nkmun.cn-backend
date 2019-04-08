@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { IsSchoolSelfOr, School } = require('./school')
-const getPayload = require('./lib/get-payload')
 const { newId } = require('../lib/id-util')
 const { writeSchoolOpLog } = require('./op-log')
 
@@ -68,7 +67,7 @@ route.post('/schools/:id/reservations/',
             checkIn,
             checkOut,
             roomshare,
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         let round = ['1', '2'].includes(ctx.school.stage[0]) ? ctx.school.stage[0] : '3'
 
@@ -314,7 +313,7 @@ route.patch('/schools/:id/reservations/:rid',
             checkIn,
             checkOut,
             roomshare
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         const reservation = await ctx.db.collection('reservation').findOne({ _id: ctx.params.rid })
         const hotelInfo = await ctx.db.collection('hotel').findOne({ _id: reservation.hotel })
@@ -552,7 +551,7 @@ route.post('/schools/:id/roomshare/:rid',
         const {
             accept,
             reject
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         let update = {
             responded_at: new Date()

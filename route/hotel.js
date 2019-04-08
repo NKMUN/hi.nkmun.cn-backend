@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 const { AccessFilter } = require('./auth')
-const getPayload = require('./lib/get-payload')
 const { toId, newId } = require('../lib/id-util')
 
 async function getHotel(ctx, id) {
@@ -36,7 +35,7 @@ route.post('/hotels/',
             roomshareInitiatorRate = 1,
             roomshareRecipientRate = 0,
             stock = 0
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         // hotel spec
         const {
@@ -78,7 +77,7 @@ route.patch('/hotels/:id',
     async ctx => {
         const {
             stock: target
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         if (target !==undefined) {
             const {

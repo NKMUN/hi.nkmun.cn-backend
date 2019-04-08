@@ -1,9 +1,7 @@
 const Router = require('koa-router')
 const route = new Router()
-const { readFile, unlink } = require('mz/fs')
-const getPayload = require('./lib/get-payload')
 const { AccessFilter } = require('./auth')
-const { newId, toId } = require('../lib/id-util')
+const { toId } = require('../lib/id-util')
 const { Sessions } = require('./session')
 const { isPlainObject, get } = require('../lib/property-accessor')
 const { Mailer }= require('./mailer')
@@ -82,7 +80,7 @@ route.patch('/daises/:id',
     AccessFilter('dais', 'admin', 'finance'),
     Dais,
     async ctx => {
-        const payload = getPayload(ctx)
+        const payload = ctx.request.body
         const PERMITTED_FIELDS = [
             'photoId',
             'identification',
@@ -119,7 +117,7 @@ route.post('/daises/:id',
             activate,
             deactivate,
             session
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         if (!activate && !deactivate && !session) {
             ctx.status = 400
@@ -246,7 +244,7 @@ route.patch('/daises/:id/reimbursement',
             'note',
         ]
 
-        const payload = getPayload(ctx)
+        const payload = ctx.request.body
         let updateQuery = {}
 
         // check basic fields
@@ -328,7 +326,7 @@ route.post('/daises/:id/reimbursement/process',
             review_note = '',
             confirm_payment,
             trip,
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         let updateQuery = {}
 

@@ -1,7 +1,6 @@
 const Router = require('koa-router')
 const route = new Router()
 
-const getPayload = require('./lib/get-payload')
 const { sign } = require('jsonwebtoken')
 const { newId } = require('../lib/id-util')
 
@@ -14,7 +13,7 @@ const { AccessFilter, InjectHasAccessTo } = require('./auth')
 route.post('/login',
     async (ctx) => {
         const { db, JWT_SECRET } = ctx
-        const { user, password } = getPayload(ctx)
+        const { user, password } = ctx.request.body
 
         let storedCred = await db.collection('user').findOne({ _id: user })
 
@@ -89,7 +88,7 @@ route.patch('/users/:id',
         const {
             password,
             active
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         const user = await ctx.db.collection('user').findOne({ _id: ctx.params.id })
 
@@ -137,7 +136,7 @@ route.patch('/users/:id',
 route.post('/users/',
     InjectHasAccessTo,
     async ctx => {
-        const { email, password, access, session: _session, school: _school } = getPayload(ctx)
+        const { email, password, access, session: _session, school: _school } = ctx.request.body
 
         const user = await ctx.db.collection('user').findOne({ _id: email })
         if (user) {

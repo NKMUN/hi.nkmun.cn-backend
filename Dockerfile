@@ -3,6 +3,7 @@ LABEL maintainer="NKMUN <webmaster@nkmun.cn>"
 
 ENV DEFAULT_MONGO="mongodb://mongo/hikaru"
 ENV TZ="Asia/Shanghai"
+ENV NODE_ENV=production
 
 USER root
 WORKDIR /hi-nkmun/

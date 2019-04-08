@@ -4,7 +4,6 @@ const { AccessFilter } = require('./auth')
 const { IsSchoolSelfOr, School } = require('./school')
 const { newId } = require('../lib/id-util')
 const { Mailer } = require('./mailer')
-const getPayload = require('./lib/get-payload')
 
 route.post('/schools/:id/payments/',
     IsSchoolSelfOr('finance'),
@@ -19,7 +18,7 @@ route.post('/schools/:id/payments/',
 
         const {
             images
-        } = getPayload(ctx)
+        } = ctx.request.body
 
         if (!images) {
             ctx.status = 400
@@ -64,7 +63,7 @@ route.patch('/schools/:id/payments/',
             return
         }
 
-        let { confirm, reject, reason } = getPayload(ctx)
+        let { confirm, reject, reason } = ctx.request.body
         if (confirm && reject) {
             ctx.status = 400
             ctx.body = { error: 'bad request' }
