@@ -4,6 +4,7 @@ const { AccessFilter } = require('./auth')
 const { IsSchoolSelfOr, School } = require('./school')
 const { newId } = require('../lib/id-util')
 const { Mailer } = require('./mailer')
+const { getBillingDetail } = require('./billing')
 
 route.post('/schools/:id/payments/',
     IsSchoolSelfOr('finance'),
@@ -63,19 +64,52 @@ route.patch('/schools/:id/payments/',
             return
         }
 
-        let { confirm, reject, reason } = ctx.request.body
-        if (confirm && reject) {
+        let { confirmOrdinary, confirmEarlybird, reject, reason } = ctx.request.body
+        if ([confirmOrdinary, confirmEarlybird, reject].filter($ => $).length !== 1) {
             ctx.status = 400
             ctx.body = { error: 'bad request' }
             return
         }
 
-        if (confirm) {
+        if (confirmOrdinary || confirmEarlybird) {
+            // if confirmEarlybird, verify payment's round is ok
+            const currentRound = ctx.school.stage[0]
+            if (currentRound !== '1' && confirmEarlybird) {
+                ctx.status = 412
+                ctx.body = { error: `earlybird is not applicable for round ${currentRound}` }
+                return
+            }
+
+            const pendingBills = await getBillingDetail(ctx, ctx.school._id, currentRound)
+            const confirmedBills = pendingBills.map($ => ({
+                round: currentRound,
+                type: $.type,
+                name: $.name,
+                price: $.price,
+                earlybirdPrice: $.earlybirdPrice,
+                amount: $.amount,
+                effectiveRule: confirmOrdinary ? 'ordinary'
+                             : confirmEarlybird ? 'earlybird'
+                             : null,
+                effectivePrice: confirmOrdinary ? $.price
+                              : confirmEarlybird ? $.earlybirdPrice
+                              : null,
+                effectiveSum: confirmOrdinary ? $.sum
+                            : confirmEarlybird ? $.earlybirdSum
+                            : null,
+            }))
+
             await ctx.db.collection('payment').updateOne(
                 { school: ctx.params.id, active: true },
-                { $set: { active: false } }
+                { $set: {
+                    active: false,
+                    confirmedBills,
+                    effectiveRule: confirmOrdinary ? 'ordinary'
+                                 : confirmEarlybird ? 'earlybird'
+                                 : null
+                } }
             )
-            if (ctx.school.stage[0] === '2') {
+            if (currentRound === '2') {
                 await ctx.db.collection('school').updateOne(
                     { _id: ctx.params.id },
                     { $set: { stage: `1.complete`, 'seat.2pre': ctx.school.seat['2'] } }
@@ -100,14 +134,14 @@ route.patch('/schools/:id/payments/',
         let mailTemplate
 
         if (ctx.school.stage[0] === '1') {
-            if (confirm)
+            if (confirmOrdinary || confirmEarlybird)
                 mailTemplate = ctx.mailConfig.paymentSuccess
             if (reject)
                 mailTemplate = ctx.mailConfig.paymentFailure
         }
 
         if (ctx.school.stage[0] === '2') {
-            if (confirm)
+            if (confirmOrdinary || confirmEarlybird)
                 mailTemplate = ctx.mailConfig.paymentSuccess2
             if (reject)
                 mailTemplate = ctx.mailConfig.paymentFailure2
@@ -173,6 +207,7 @@ route.get('/schools/:id/payments/',
                 type: '$type',
                 round: { $ifNull: ['$round', '1'] },
                 active: { $ifNull: ['$active', false] },
+                effectiveRule: { $ifNull: ['$effectiveRule', null] },
                 school: {
                     id: '$school._id',
                     name: '$school.school.name'
