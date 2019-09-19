@@ -587,6 +587,50 @@ route.get('/schools/name/:name',
     }
 )
 
+route.patch('/schools/:id/name',
+    AccessFilter('staff', 'finance', 'admin'),
+    School,
+    async ctx => {
+        const newName = ctx.request.body.name
+        const oldName = ctx.school.school.name
+        if (typeof newName !== 'string') {
+            ctx.status = 400
+            ctx.body = { error: 'name must be a string' }
+            return
+        }
+        if (oldName === newName) {
+            ctx.status = 200
+            ctx.body = ctx.school
+            return
+        }
+        // check is acting on school
+        if (ctx.school.type !== 'school') {
+            ctx.status = 400
+            ctx.body = { error: 'can not rename non-school' }
+            return
+        }
+        // check newName is not used
+        const schoolWithSameName = await ctx.db.collection('school').findOne({ 'school.name': newName })
+        if (schoolWithSameName) {
+            ctx.status = 409
+            ctx.body = { error: 'there are school with same name' }
+            return
+        }
+        // update school
+        await ctx.db.collection('school').updateOne(
+            { _id: ctx.school._id },
+            { $set: {
+                'school.name': newName,
+                'identifier': newName
+            } }
+        )
+        await writeSchoolOpLog(ctx, ctx.school._id, 'school', `改名为「${newName}」，原名「${oldName}」`)
+        await School(ctx)
+        ctx.status = 200
+        ctx.body = ctx.school
+    }
+)
+
 async function ReturnIndividualInfo(ctx) {
     if (ctx.school.type !== 'individual') {
         ctx.status = 404
