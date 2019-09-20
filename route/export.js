@@ -111,6 +111,19 @@ const disclaimerApprovalText = val => {
     return '待审核'
 }
 
+const schoolRoundText = val => {
+    if (val === '1') return '一轮'
+    return '追加'
+}
+
+const billRuleText = val => {
+    switch (val) {
+        case 'earlybird': return '早鸟'
+        case 'ordinary': return '常规'
+        default: return '未知'
+    }
+}
+
 const REPRESENTATIVE = {
     columns: [
         '领队标记',
@@ -167,14 +180,16 @@ const REPRESENTATIVE = {
 const flattenArray = (a, b) => [...a, ...b]
 
 const BILLING = {
-    columns: [ '学校', '类别', '项目', '数量/天数', '单价', '总价' ],
+    columns: [ '学校', '阶段', '缴费规则', '类别', '项目', '数量/天数', '单价', '总价' ],
     map: $ => [
-        GV($, 'school'),
+        GV($, 'identifier'),
+        schoolRoundText( GV($, 'round') ),
+        billRuleText( GV($, 'effectiveRule') ),
         GV($, 'type'),
         GV($, 'name'),
         GV($, 'amount'),
-        GV($, 'price'),
-        GV($, 'sum'),
+        GNV($, 'price'),
+        GNV($, 'sum'),
     ]
 }
 
@@ -426,7 +441,25 @@ const AGGREGATE_OPTS = {
 }
 
 const LOOKUP_SCHOOL_BILLING = [
-    { $sort: { 'identifier': 1 }}
+    { $match: {active: false} },
+    { $lookup: {from: 'school', localField: 'school', foreignField: '_id', as: 'school'} },
+    { $unwind: '$school' },
+    { $unwind: '$confirmedBills' },
+    { $project: {
+        identifier: '$school.identifier',
+        round: '$confirmedBills.round',
+        effectiveRule: '$effectiveRule',
+        type: '$confirmedBills.type',
+        name: '$confirmedBills.name',
+        amount: '$confirmedBills.amount',
+        price: '$confirmedBills.effectivePrice',
+        sum: '$confirmedBills.effectiveSum',
+    } },
+    { $sort: {
+        identifier: 1,
+        round: 1,
+        type: 1,
+    } }
 ]
 
 const LOOKUP_REPRESENTATIVE = [
@@ -552,18 +585,9 @@ route.get('/export/billings',
         ctx.set('content-type', 'text/csv;charset=utf-8')
         // compute billing details for every school on export
         ctx.body = createCsvStream(
-            ctx.db.collection('school').aggregate(LOOKUP_SCHOOL_BILLING, AGGREGATE_OPTS),
+            ctx.db.collection('payment').aggregate(LOOKUP_SCHOOL_BILLING, AGGREGATE_OPTS),
             BILLING.columns,
-            school => Promise.all(
-                ['1', '2', '3'].map(round => getBillingDetail(ctx, school._id, round))
-            ).then(
-                (...results) => results
-                    .reduce(flattenArray)   // merge promise results
-                    .reduce(flattenArray)   // flatten billing items
-                    .map($ => ({...$, school: school.identifier}))  // merge school name
-                    .map(BILLING.map)  // use legacy mapper
-            ),
-            true  // flatten mapped result
+            BILLING.map
         )
     }
 )

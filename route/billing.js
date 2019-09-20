@@ -36,6 +36,7 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
         } }
     ]).toArray()
 
+
     await Sessions(ctx)
     let sessions = ctx.sessions
     let seat = school.seat[round] || {}
@@ -43,6 +44,8 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
     let detail = []
 
     // sessions
+    const earlybirdDiscountApplicable = (round === '1')
+
     for (let key in seat) {
         if (seat[key]) {
             let session = sessions.find( $ => $._id === key )
@@ -51,6 +54,7 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
                     name: session.name,
                     type: '会场',
                     price: session.price,
+                    earlybirdPrice: earlybirdDiscountApplicable && session.earlybirdPrice ? session.earlybirdPrice : session.price,
                     amount: seat[key],
                 })
         }
@@ -63,11 +67,15 @@ async function getBillingDetail(ctx, schoolId, round = '1') {
             name: reservation.hotel.name + '（' + reservation.hotel.type + '）',
             type: '住宿',
             price: reservation.hotel.price,
+            earlybirdPrice: earlybirdDiscountApplicable && reservation.hotel.earlybirdPrice ? reservation.hotel.earlybirdPrice : reservation.hotel.price,
             amount: days,
         })
     })
 
-    detail.forEach( $ => $.sum = $.price * $.amount )
+    detail.forEach( $ => {
+        $.sum = $.price * $.amount
+        $.earlybirdSum = $.earlybirdPrice * $.amount
+    })
 
     return detail
 }
