@@ -8,7 +8,7 @@ const { Mailer }= require('./mailer')
 
 const Dais = async (ctx, next) => {
     // dais can only get themself
-    if (ctx.hasAccessTo('dais') && !(ctx.hasAccessTo('admin') || ctx.hasAccessTo('academic_director'))) {
+    if (ctx.hasAccessTo('dais') && !(ctx.hasAccessTo('admin') || ctx.hasAccessTo('academic-director'))) {
         if (ctx.params.id !== '~') {
             ctx.status = 403
             ctx.body = { error: 'forbidden' }
@@ -60,7 +60,7 @@ const Route_GetDaisReimbursementById = async ctx => {
 }
 
 route.get('/daises/',
-    AccessFilter('admin', 'academic_director'),
+    AccessFilter('admin', 'academic-director'),
     async ctx => {
         const daises = await ctx.db.collection('dais').find(
             {},
@@ -110,7 +110,7 @@ route.patch('/daises/:id',
 )
 
 route.post('/daises/:id',
-    AccessFilter('academic_director', 'admin'),
+    AccessFilter('academic-director', 'admin'),
     Dais,
     async ctx => {
         const {
@@ -178,7 +178,7 @@ route.post('/daises/:id',
 )
 
 route.delete('/daises/:id',
-    AccessFilter('academic_director', 'admin'),
+    AccessFilter('academic-director', 'admin'),
     Dais,
     async ctx => {
         await ctx.db.collection('dais').deleteOne({ _id: ctx.dais._id })
