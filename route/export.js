@@ -10,6 +10,23 @@ const mime = require('mime')
 // catch null, and rename jpeg to jpg
 const getExtension = (...arg) => (mime.getExtension(...arg) || '').replace('jpeg', 'jpg')
 
+const escapeCsvLiteral = (str) => {
+    let ret = str
+    const containsNewline = ret.indexOf('\n') >= 0 || ret.indexOf('\r') >= 0 || ret.indexOf('\n\r') >= 0
+    const needQuote = ret.indexOf(',') >= 0 || containsNewline
+    const containsQuote = ret.indexOf('"') >= 0
+
+    if (needQuote && containsQuote) {
+        ret = ret.replace(/"/g, '""')
+        ret = `"${ret}"`
+    }
+    if (needQuote && !containsQuote) {
+        ret = ret.replace(/"/g, '""')
+    }
+
+    return ret
+}
+
 const GV = (obj, key) => {
     let keys = key.split('.')
     let cur = obj
@@ -20,7 +37,7 @@ const GV = (obj, key) => {
           return ''
         }
     }
-    return cur
+    return escapeCsvLiteral(cur || '')
 }
 
 const GNV = (obj, key) => GV(obj, key) || 0
@@ -33,6 +50,7 @@ const genderText = val => {
     switch (val) {
         case 'm': return '男'
         case 'f': return '女'
+        case 'x': return '其它'
         default:  return ''
     }
 }
@@ -413,6 +431,43 @@ const DAIS_REIMBURSEMENT = {
     ]
 }
 
+const FOREIGNER = {
+    columns: [
+        '姓',
+        '名',
+        '性别',
+        '国籍',
+        '护照号码',
+        '出生日期',
+        '学校',
+        '邮箱',
+        '电话',
+        '紧急联系人电话',
+        '会场',
+        '以往参会经历',
+        '饮食需求',
+        '健康状况说明',
+        '备注',
+    ],
+    map: $ => [
+       GV($, 'last_name'),
+       GV($, 'first_name'),
+       genderText( GV($, 'gender') ),
+       GV($, 'nationality'),
+       GV($, 'passport_number'),
+       GV($, 'birthday'),
+       GV($, 'school'),
+       GV($, 'email'),
+       GV($, 'phone'),
+       GV($, 'emergency_contact_phone'),
+       GV($, 'request_session'),
+       GV($, 'past_mun_experience'),
+       GV($, 'dietary_requirement'),
+       GV($, 'health_condition'),
+       GV($, 'comment')
+    ]
+}
+
 const createCsvStream = (cursor, columns, map, flatten = false) => {
     const stream = new CsvStringify()
     stream.write(columns)
@@ -550,6 +605,17 @@ const LOOKUP_APPLICATION_CONTACT = [
 
 const LOOKUP_DAIS_REIMBURSEMENT = [
     { $sort: { 'contact.name': 1 } }
+]
+
+const LOOKUP_FOREIGNER_APPLICATION = [
+    { $sort: { 'created': 1 } },
+    { $lookup: {
+        localField: 'request_session',
+        foreignField: '_id',
+        from: 'session',
+        as: 'session',
+    } },
+    { $unwind: '$session' },
 ]
 
 route.get('/export/representatives',
@@ -697,6 +763,19 @@ route.get('/export/applications/contacts',
             ctx.db.collection('application').aggregate(LOOKUP_APPLICATION_CONTACT, AGGREGATE_OPTS),
             APPLICATION_CONTACT.columns,
             APPLICATION_CONTACT.map
+        )
+    }
+)
+
+route.get('/export/foreigner-applications',
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
+    async ctx => {
+        ctx.status = 200
+        ctx.set('content-type', 'text/csv;charset=utf-8')
+        ctx.body = createCsvStream(
+            ctx.db.collection('foreigner').aggregate(LOOKUP_FOREIGNER_APPLICATION, AGGREGATE_OPTS),
+            FOREIGNER.columns,
+            FOREIGNER.map
         )
     }
 )

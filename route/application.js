@@ -180,6 +180,48 @@ route.post('/individual-applications/',
     }
 )
 
+route.post('/foreigner-applications/',
+    Config,
+    async ctx => {
+        let payload = ctx.request.body
+
+        ctx.log.application = payload
+
+        let existIdentification = await ctx.db.collection('foreigner').findOne({
+            'first_name': payload.first_name,
+            'last_name': payload.last_name,
+            'passport_number': payload.passport_number,
+        })
+
+        let existEmail = await ctx.db.collection('foreigner').findOne({
+            'email': payload.email
+        })
+
+
+        if ( existIdentification || existEmail ) {
+            ctx.status = 409
+            ctx.body = {
+                error: 'already exists',
+                ...(
+                    existIdentification ? { code: 'duplicated_identification', text: 'Identity already Registered' }
+                  : existEmail ? { code: 'duplicated_email', text: 'Email already registered' }
+                  : {}
+                )
+            }
+            return
+        }
+        await ctx.db.collection('foreigner').insert({
+            ...payload,
+            type: 'foreigner-individual',
+            identifier: '国际个人 - ' + payload.last_name + ' ' + payload.first_name,
+            _id: newId(),
+            created: new Date()
+        })
+        ctx.status = 200
+        ctx.body = { message: 'accepted' }
+    }
+)
+
 module.exports = {
     routes: route.routes()
 }
