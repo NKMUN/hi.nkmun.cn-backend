@@ -433,6 +433,7 @@ const DAIS_REIMBURSEMENT = {
 
 const FOREIGNER = {
     columns: [
+        '报名渠道',
         '姓',
         '名',
         '性别',
@@ -450,6 +451,7 @@ const FOREIGNER = {
         '备注',
     ],
     map: $ => [
+       GV($, 'referrer'),
        GV($, 'last_name'),
        GV($, 'first_name'),
        genderText( GV($, 'gender') ),
