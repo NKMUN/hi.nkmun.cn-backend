@@ -624,6 +624,14 @@ route.patch('/schools/:id/name',
                 'identifier': newName
             } }
         )
+        // update application if a match is found
+        await ctx.db.collection('application').updateOne(
+            { _id: ctx.school.application_id },
+            { $set: {
+                'school.name': newName,
+                'identifier': newName
+            } }
+        )
         await writeSchoolOpLog(ctx, ctx.school._id, 'school', `改名为「${newName}」，原名「${oldName}」`)
         await School(ctx)
         ctx.status = 200
