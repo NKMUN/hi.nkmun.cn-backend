@@ -11,7 +11,7 @@ const mime = require('mime')
 const getExtension = (...arg) => (mime.getExtension(...arg) || '').replace('jpeg', 'jpg')
 
 const escapeCsvLiteral = (str) => {
-    let ret = str
+    let ret = String(str || '')
     const containsNewline = ret.indexOf('\n') >= 0 || ret.indexOf('\r') >= 0 || ret.indexOf('\n\r') >= 0
     const needQuote = ret.indexOf(',') >= 0 || containsNewline
     const containsQuote = ret.indexOf('"') >= 0
