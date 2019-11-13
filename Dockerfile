@@ -1,4 +1,4 @@
-FROM node:alpine
+FROM node:12-alpine
 LABEL maintainer="NKMUN <webmaster@nkmun.cn>"
 
 ENV DEFAULT_MONGO="mongodb://mongo/nkmun"
