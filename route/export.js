@@ -27,7 +27,7 @@ const escapeCsvLiteral = (str) => {
     return ret
 }
 
-const getRawValue(obj, key) {
+const getRawValue = (obj, key) => {
     let keys = key.split('.')
     let cur = obj
     for (let key of keys) {
@@ -40,9 +40,7 @@ const getRawValue(obj, key) {
     return cur
 }
 
-const GV = (obj, key) => {
-    return escapeCsvLiteral(getRawValue(obj, key) || '')
-}
+const GV = (obj, key) => escapeCsvLiteral(getRawValue(obj, key) || '')
 
 const GNV = (obj, key) => getRawValue(obj, key) || 0
 
