@@ -27,7 +27,7 @@ const escapeCsvLiteral = (str) => {
     return ret
 }
 
-const GV = (obj, key) => {
+const getRawValue(obj, key) {
     let keys = key.split('.')
     let cur = obj
     for (let key of keys) {
@@ -37,10 +37,14 @@ const GV = (obj, key) => {
           return ''
         }
     }
-    return escapeCsvLiteral(cur || '')
+    return cur
 }
 
-const GNV = (obj, key) => GV(obj, key) || 0
+const GV = (obj, key) => {
+    return escapeCsvLiteral(getRawValue(obj, key) || '')
+}
+
+const GNV = (obj, key) => getRawValue(obj, key) || 0
 
 const isLeaderText = val => val ? '领队' : ''
 
