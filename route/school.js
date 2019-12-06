@@ -518,12 +518,12 @@ route.post('/schools/:id/progress',
                 let leaderAttend = ctx.school.seat['1']['_leader_r'] >= 1 || !ctx.school.seat['1']['_leader_nr']
                 for (let round of ['1', '2'])
                     for (let session in (ctx.school.seat[round] || {}))
-                        for (let i=0; i!==ctx.school.seat[round][session]; ++i) {
+                        for (let i=0; i<ctx.school.seat[round][session]; ++i) {
                             if (session !== '_leader_r') {
                                 // is_leader: representative is leader
                                 // if !leaderAttend (leader is not representative) -> infer leader from _leader_nr session
                                 // if leaderAttend -> ask user to select leader
-                                ctx.db.collection('representative').insertOne({
+                                await ctx.db.collection('representative').insertOne({
                                     _id: newId(),
                                     school: ctx.school._id,
                                     session,
