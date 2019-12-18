@@ -153,7 +153,7 @@ route.get('/images/:id',
                 { _id },
                 { buffer: true }
             )
-            const resultBuffer = await sharp(image.buffer.buffer)
+            const resultBuffer = await sharp(image.buffer.buffer, {failOnError: false})
                 .resize(SIZE_MAP[size], SIZE_MAP[size])
                 .resize({ fit: 'inside', withoutEnlargement: true })
                 .toFormat(FORMAT_MAP[format].format, FORMAT_MAP.options)
