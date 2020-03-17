@@ -13,7 +13,8 @@ RUN apk add --no-cache tzdata && \
     cp /usr/share/zoneinfo/${TZ} /etc/localtime && \
     echo ${TZ} > /etc/timezone && \
     apk del tzdata && \
-    ( cd /hi-nkmun/ ; yarn install )
+    ( cd /hi-nkmun/ ; yarn install ) && \
+    yarn cache clean && rm -rf '/tmp/*'
 COPY . /hi-nkmun/
 
 ENTRYPOINT ["/hi-nkmun/bin/hi-nkmun"]
