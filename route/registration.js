@@ -43,6 +43,7 @@ route.post('/registration',
             guardian_identification,
             alt_guardian,
             disclaimer_image,
+            avatar_image,
             seat
         } = await db.collection('application').findOne(
             { _id: schoolId },
@@ -61,11 +62,12 @@ route.post('/registration',
                   ? { representative: {
                         contact,
                         graduation_year: graduation,
-                        identification: identification,
-                        guardian: guardian,
-                        guardian_identification: guardian_identification,
-                        alt_guardian: alt_guardian,
-                        disclaimer_image: disclaimer_image,
+                        identification,
+                        guardian,
+                        guardian_identification,
+                        alt_guardian,
+                        disclaimer_image,
+                        avatar_image,
                         comment: ''
                     } }
                   : {}

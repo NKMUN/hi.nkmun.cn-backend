@@ -38,6 +38,9 @@ const makeRepresentativeEntry = (representative, session, school) => {
         guardian: representative.guardian,
         guardian_identification: representative.guardian_identification,
         alt_guardian: representative.alt_guardian,
+        avatar_image: representative.avatar_image,
+        avatar_approval: representative.avatar_approval,
+        avatar_approval_note: representative.avatar_approval_note,
         disclaimer_image: representative.disclaimer_image,
         disclaimer_approval: representative.disclaimer_approval,
         disclaimer_approval_note: representative.disclaimer_approval_note,
@@ -91,6 +94,9 @@ route.get('/schools/:id/representatives/',
                     id: '$school._id',
                     name: '$school.school.name'
                 },
+                avatar_image: '$avatar_image',
+                avatar_approval: '$avatar_approval',
+                avatar_approval_note: '$avatar_approval_note',
                 disclaimer_image: '$disclaimer_image',
                 disclaimer_approval: '$disclaimer_approval',
                 disclaimer_approval_note: '$disclaimer_approval_note',
@@ -131,6 +137,8 @@ route.patch('/schools/:id/representatives/:rid',
             delete payload.session
             delete payload.disclaimer_approval
             delete payload.disclaimer_approval_note
+            delete payload.avatar_approval
+            delete payload.avatar_approval_note
         }
         if ( !ctx.hasAccessTo('staff.representative') && !ctx.hasAccessTo('leader') ) {
             delete payload.withdraw

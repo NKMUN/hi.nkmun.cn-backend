@@ -75,6 +75,18 @@ route.get('/schools/',
                 ... projection,
                 attending_representatives: sumMapRepr({$cond: ['$$repr.withdraw', 0, 1]}),
                 withdrawn_representatives: sumMapRepr({$cond: ['$$repr.withdraw', 1, 0]}),
+                avatar_approved_representatives: sumMapRepr({$cond: [
+                    { $and: [
+                        { $ne: ['$$repr.withdraw', true] },
+                        { $eq: ['$$repr.avatar_approval', true] }
+                    ]}, 1, 0
+                ]}),
+                avatar_rejected_representatives: sumMapRepr({$cond: [
+                    { $and: [
+                        { $ne: ['$$repr.withdraw', true] },
+                        { $eq: ['$$repr.avatar_approval', false] }
+                    ]}, 1, 0
+                ]}),
                 disclaimer_approved_representatives: sumMapRepr({$cond: [
                     { $and: [
                         { $ne: ['$$repr.withdraw', true] },
@@ -691,6 +703,8 @@ route.patch('/schools/:id/individual',
         delete payload.withdraw
         delete payload.disclaimer_approval
         delete payload.disclaimer_approval_note
+        delete payload.avatar_approval
+        delete payload.avatar_approval_note
 
         if (ctx.school.stage[0] === '3' || ctx.school.stage[0] === '9') {
             await ctx.db.collection('representative').updateOne(
