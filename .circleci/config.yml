@@ -5,7 +5,6 @@ jobs:
       - image: circleci/node:lts
     environment:
       NK_HOST: root@nkmun.cn
-      ROUTING_HOST: root@lax-6.wacky.one
       BUILD_PREFIX: hi-nkmun-backend
       SSH_OPTS: 'UserKnownHostsFile=.circleci/ssh_hosts'
       PRODUCTION_TARGET: deploy-hi-nkmun.sh
@@ -26,7 +25,7 @@ jobs:
           command: docker build -t ${TAG} .
       - run:
           name: Push to Server via Routing Server
-          command: docker save ${TAG} | gzip -9 | ssh -o ${SSH_OPTS} ${ROUTING_HOST} "ssh ${NK_HOST} \"gunzip | docker load\""
+          command: docker save ${TAG} | gzip -9 | ssh -o ${SSH_OPTS} ${NK_HOST} "gunzip | docker load"
       - run:
           name: Deploy
           command: ssh -o ${SSH_OPTS} ${NK_HOST} "/root/docker/${TARGET} ${TAG}"
