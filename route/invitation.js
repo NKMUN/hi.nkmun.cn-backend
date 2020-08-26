@@ -46,7 +46,7 @@ route.post('/invitations/',
             transportResponse
         } = await ctx.mailer.sendMail({
             to: application.contact.email,
-            subject: '汇文国际中学生模拟联合国大会名额名额分配结果',
+            subject: '汇文国际模拟联合国大会名额名额分配结果',
             html: mailHtml
         })
 

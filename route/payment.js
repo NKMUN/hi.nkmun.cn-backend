@@ -162,7 +162,7 @@ route.patch('/schools/:id/payments/',
                 transportResponse
             } = await ctx.mailer.sendMail({
                 to: ctx.school.leader.email,
-                subject: '汇文国际中学生模拟联合国大会缴费审核结果',
+                subject: '汇文国际模拟联合国大会缴费审核结果',
                 html: mailHtml
             })
 
