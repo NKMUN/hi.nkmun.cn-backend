@@ -221,7 +221,7 @@ async function sendAcademicStaffAdmissionEmail(ctx, templateName, application) {
 
         await ctx.mailer.sendMail({
             to: application.user,
-            subject: '汇文国际中学生模拟联合国大会学术团队招募结果',
+            subject: '汇文国际模拟联合国大会学术团队招募结果',
             html: mailHtml
         })
     })

@@ -310,7 +310,7 @@ async function sendDaisReimbursementEmail(ctx, templateName, dais, trip, tripKey
 
         await ctx.mailer.sendMail({
             to: dais.user,
-            subject: '汇文国际中学生模拟联合国大会行程费用报销通知',
+            subject: '汇文国际模拟联合国大会行程费用报销通知',
             html: mailHtml
         })
     })
