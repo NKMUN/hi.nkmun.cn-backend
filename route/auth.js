@@ -1,21 +1,16 @@
 const {verify, sign} = require('jsonwebtoken')
 const AUTHORIZATION_PREFIX = 'Bearer '
-const curry = require('curry')
 
-const matchAccessString = curry(
-    (givenAccess, requiredAccess) =>
-        givenAccess === 'root' || `${requiredAccess}.`.startsWith(`${givenAccess}.`)
-)
+const matchAccessString =  (givenAccess, requiredAccess) =>
+    givenAccess === 'root' || `${requiredAccess}.`.startsWith(`${givenAccess}.`)
 
-const hasAccess = curry(
-    (givenAccesses , requiredAccess) =>
-        givenAccesses.find(givenAccess => matchAccessString(givenAccess, requiredAccess))
-)
+const hasAccess =  (givenAccesses , requiredAccess) =>
+    givenAccesses.find(givenAccess => matchAccessString(givenAccess, requiredAccess))
 
 async function InjectHasAccessTo(ctx, next) {
     if (!ctx.token && ctx.request.get('Authorization')) await TokenParser(ctx)
-    const access = ctx.token && ctx.token.access || []
-    ctx.hasAccessTo = hasAccess(access)
+    const givenAccess = ctx.token && ctx.token.access || []
+    ctx.hasAccessTo = requiredAccess => hasAccess(givenAccess, requiredAccess)
 
     if (next)
         await next()
