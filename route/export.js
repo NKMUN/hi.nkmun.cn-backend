@@ -862,6 +862,27 @@ route.get('/export/representatives/photos',
     }
 )
 
+route.get('/export/representatives/disclaimers',
+    TokenAccessFilter(AccessFilter('finance', 'admin')),
+    async ctx => {
+        let archiver = Archiver('zip', {store: true})
+        ctx.status = 200
+        ctx.set('content-type', 'application/zip;charset=utf-8')
+        ctx.body = archiver.pipe(new PassThrough())
+        const representatives = await ctx.db.collection('representative').aggregate(LOOKUP_REPRESENTATIVE, AGGREGATE_OPTS).toArray()
+        const createName = NameCreator()
+        for (let representative of representatives) {
+            const name = createName(
+                  GV(representative, 'school.school.name') + '-'
+                + (GV(representative, 'contact.name') || GV(representative, '_id')) + '-'
+                + GV(representative, 'identification.number')
+            )
+            await archiverAppendDbImage(archiver, ctx.db, representative.disclaimer_image, name)
+        }
+        archiver.finalize()
+    }
+)
+
 route.get('/export/daises/reimbursements',
     TokenAccessFilter(AccessFilter('finance', 'admin')),
     async ctx => {
