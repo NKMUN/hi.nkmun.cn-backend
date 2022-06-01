@@ -31,7 +31,7 @@
     "mongodb": "^2.2.22",
     "nodemailer": "^4.1.0",
     "password-prompt": "^1.0.2",
-    "sharp": "^0.23.0",
+    "sharp": "^0.30.5",
     "shortid": "^2.2.6",
     "superagent": "^3.7.0",
     "winston": "^2.2.0"
