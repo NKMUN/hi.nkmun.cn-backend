@@ -22,7 +22,7 @@
     "content-disposition": "^0.5.2",
     "csv-stringify": "^1.0.4",
     "deep-equal": "^1.0.1",
-    "jsonwebtoken": "^8.0.1",
+    "jsonwebtoken": "^9.0.0",
     "koa": "^2.7.0",
     "koa-body": "^4.1.0",
     "koa-mongo-sanitize": "github:wacky6/koa-mongo-sanitize",
